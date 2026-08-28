@@ -18,8 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Expanded UI (420×520) with scrollable adapter list, quick-switch buttons, status summary
+- Expanded UI (480×500) with scrollable adapter list, quick-switch buttons, status summary
 - Scheduled task now runs `Toggle-NetworkAdapter.ps1`
+
+### Fixed
+
+- Adapter row buttons clipped on right edge — rows now use `TableLayoutPanel` with a single full-width Toggle button per adapter
 
 ## [1.2.1] - 2026-08-28
 

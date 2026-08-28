@@ -228,6 +228,7 @@ namespace EthernetToggle
 
             _form = BuildForm(out _adapterList, out _summaryLabel);
             MainForm = _form;
+            _adapterList.Resize += (s, e) => ResizeAdapterRows();
             _notifyIcon = BuildNotifyIcon();
             _timer = new System.Windows.Forms.Timer { Interval = 2000 };
             _timer.Tick += OnTimerTick;
@@ -242,8 +243,8 @@ namespace EthernetToggle
             var form = new Form
             {
                 Text = _config.appName,
-                ClientSize = new Size(420, 520),
-                MinimumSize = new Size(420, 520),
+                ClientSize = new Size(480, 500),
+                MinimumSize = new Size(480, 500),
                 FormBorderStyle = FormBorderStyle.FixedSingle,
                 MaximizeBox = false,
                 StartPosition = FormStartPosition.CenterScreen,
@@ -293,21 +294,26 @@ namespace EthernetToggle
             headerPanel.Controls.Add(titleLabel);
             headerPanel.Controls.Add(subtitleLabel);
 
-            var quickPanel = new Panel
+            var quickPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 92,
-                Padding = new Padding(16, 12, 16, 8),
-                BackColor = Color.FromArgb(30, 30, 30)
+                Height = 56,
+                Padding = new Padding(16, 10, 16, 8),
+                BackColor = Color.FromArgb(30, 30, 30),
+                ColumnCount = 2,
+                RowCount = 1
             };
+            quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
 
-            var ethernetButton = CreateQuickButton("Switch to Ethernet", 0);
+            var ethernetButton = CreateQuickButton("Switch to Ethernet");
             ethernetButton.Click += (s, e) => SwitchToEthernet();
-            var wifiButton = CreateQuickButton("Switch to Wi-Fi", 166);
+            var wifiButton = CreateQuickButton("Switch to Wi-Fi");
             wifiButton.Click += (s, e) => SwitchToWifi();
 
-            quickPanel.Controls.Add(ethernetButton);
-            quickPanel.Controls.Add(wifiButton);
+            quickPanel.Controls.Add(ethernetButton, 0, 0);
+            wifiButton.Margin = new Padding(6, 0, 0, 0);
+            quickPanel.Controls.Add(wifiButton, 1, 0);
 
             summaryLabel = new Label
             {
@@ -323,7 +329,7 @@ namespace EthernetToggle
             var listHost = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(16, 8, 16, 12),
+                Padding = new Padding(16, 8, 16, 8),
                 BackColor = Color.FromArgb(30, 30, 30)
             };
 
@@ -334,7 +340,7 @@ namespace EthernetToggle
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
                 BackColor = Color.FromArgb(36, 36, 36),
-                Padding = new Padding(8)
+                Padding = new Padding(10, 8, 10, 8)
             };
 
             listHost.Controls.Add(adapterList);
@@ -376,18 +382,19 @@ namespace EthernetToggle
             return form;
         }
 
-        private static Button CreateQuickButton(string text, int x)
+        private static Button CreateQuickButton(string text)
         {
             var button = new Button
             {
                 Text = text,
-                Size = new Size(186, 36),
-                Location = new Point(x, 8),
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 0, 6, 0),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(70, 130, 220),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Height = 36
             };
             button.FlatAppearance.BorderSize = 0;
             return button;
@@ -458,15 +465,25 @@ namespace EthernetToggle
             return notifyIcon;
         }
 
-        private Panel CreateAdapterRow(NetworkAdapterInfo adapter)
+        private Control CreateAdapterRow(NetworkAdapterInfo adapter, int rowWidth)
         {
-            var row = new Panel
+            var row = new TableLayoutPanel
             {
-                Width = 330,
-                Height = 72,
+                Width = rowWidth,
+                Height = 78,
+                ColumnCount = 2,
+                RowCount = 1,
                 Margin = new Padding(0, 0, 0, 8),
                 BackColor = Color.FromArgb(45, 45, 45),
-                Padding = new Padding(10, 8, 10, 8)
+                Padding = new Padding(12, 10, 12, 10)
+            };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92f));
+
+            var infoPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(45, 45, 45)
             };
 
             var nameLabel = new Label
@@ -484,7 +501,7 @@ namespace EthernetToggle
                 Font = new Font("Segoe UI", 8.5f),
                 ForeColor = adapter.IsEnabled ? Color.FromArgb(46, 160, 67) : Color.FromArgb(160, 160, 160),
                 AutoSize = true,
-                Location = new Point(0, 22)
+                Location = new Point(0, 20)
             };
 
             var descLabel = new Label
@@ -492,56 +509,58 @@ namespace EthernetToggle
                 Text = adapter.Description,
                 Font = new Font("Segoe UI", 8f),
                 ForeColor = Color.FromArgb(130, 130, 130),
-                AutoSize = true,
-                MaximumSize = new Size(220, 0),
-                Location = new Point(0, 40)
+                AutoSize = false,
+                Size = new Size(rowWidth - 140, 18),
+                Location = new Point(0, 38)
             };
 
-            var enableButton = new Button
+            infoPanel.Controls.Add(nameLabel);
+            infoPanel.Controls.Add(statusLabel);
+            infoPanel.Controls.Add(descLabel);
+
+            var toggleButton = new Button
             {
-                Text = "Enable",
-                Size = new Size(72, 28),
-                Location = new Point(220, 18),
+                Text = adapter.IsEnabled ? "Disable" : "Enable",
+                Dock = DockStyle.Fill,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(55, 55, 55),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 8.5f),
-                Enabled = !adapter.IsEnabled
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Margin = new Padding(8, 8, 0, 8)
             };
-            enableButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
-            enableButton.Click += (s, e) => RunAdapterAction("Enable", adapter.Name);
+            toggleButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
+            toggleButton.Click += (s, e) => RunAdapterAction(adapter.IsEnabled ? "Disable" : "Enable", adapter.Name);
 
-            var disableButton = new Button
-            {
-                Text = "Disable",
-                Size = new Size(72, 28),
-                Location = new Point(298, 18),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(55, 55, 55),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 8.5f),
-                Enabled = adapter.IsEnabled
-            };
-            disableButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
-            disableButton.Click += (s, e) => RunAdapterAction("Disable", adapter.Name);
-
-            row.Controls.Add(nameLabel);
-            row.Controls.Add(statusLabel);
-            row.Controls.Add(descLabel);
-            row.Controls.Add(enableButton);
-            row.Controls.Add(disableButton);
+            row.Controls.Add(infoPanel, 0, 0);
+            row.Controls.Add(toggleButton, 1, 0);
             return row;
+        }
+
+        private int GetAdapterRowWidth()
+        {
+            var scrollbar = _adapterList.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0;
+            return Math.Max(380, _adapterList.ClientSize.Width - scrollbar - 24);
+        }
+
+        private void ResizeAdapterRows()
+        {
+            var rowWidth = GetAdapterRowWidth();
+            foreach (Control control in _adapterList.Controls)
+            {
+                control.Width = rowWidth;
+            }
         }
 
         private void RefreshAdapters()
         {
             var adapters = AdapterHelper.GetAdapters(_config, includeVirtual: false);
+            var rowWidth = GetAdapterRowWidth();
             _adapterList.SuspendLayout();
             _adapterList.Controls.Clear();
 
             foreach (var adapter in adapters)
             {
-                _adapterList.Controls.Add(CreateAdapterRow(adapter));
+                _adapterList.Controls.Add(CreateAdapterRow(adapter, rowWidth));
             }
 
             if (adapters.Count == 0)

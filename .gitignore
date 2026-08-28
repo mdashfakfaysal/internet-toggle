@@ -1,5 +1,5 @@
-# Windows
-Thumbs.db
+# Build output
+dist/
 Desktop.ini
 *.lnk
 

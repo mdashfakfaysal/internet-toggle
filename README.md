@@ -19,6 +19,16 @@ A tiny Windows utility to quickly enable or disable your Ethernet adapter from t
 - PowerShell 5.1 or later
 - Administrator rights for **install only** (not for daily use)
 
+## Download
+
+Get the latest release from [GitHub Releases](https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases):
+
+1. Download `ethernet-toggle-tray-v1.0.0.zip`
+2. Extract anywhere on your PC
+3. Double-click **`Start Ethernet Toggle.bat`**
+
+For silent toggles without UAC each time, run the one-time install (below) first.
+
 ## Quick Start
 
 1. Clone or download this repo.
@@ -105,6 +115,18 @@ ethernet-toggle-tray/
 ```powershell
 .\scripts\New-EthernetToggleAssets.ps1
 ```
+
+## Build a release package
+
+Maintainers can build the downloadable zip locally:
+
+```powershell
+.\scripts\Build-Release.ps1 -Version 1.0.0
+```
+
+Output: `dist/ethernet-toggle-tray-v1.0.0.zip`
+
+Pushing a version tag (for example `v1.0.0`) triggers the GitHub Actions release workflow, which builds the zip and publishes a GitHub Release automatically.
 
 ## Upload to GitHub
 

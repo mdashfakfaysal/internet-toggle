@@ -76,6 +76,7 @@ namespace EthernetToggle
         public string Name { get; set; }
         public string Description { get; set; }
         public bool IsEnabled { get; set; }
+        public bool IsConnected { get; set; }
         public bool IsVirtual { get; set; }
         public string ConnectionState { get; set; }
         public string StatusText { get; set; }
@@ -89,13 +90,22 @@ namespace EthernetToggle
 
     internal static class AdapterHelper
     {
+        private sealed class MsftAdapterState
+        {
+            public int MediaConnectState { get; set; }
+            public string InterfaceDescription { get; set; }
+            public bool Virtual { get; set; }
+        }
+
         public static IList<NetworkAdapterInfo> GetAdapters(AppConfig config, bool includeVirtual)
         {
             var results = new List<NetworkAdapterInfo>();
+            var msftStates = GetMsftAdapterStates();
+
             try
             {
                 using (var searcher = new System.Management.ManagementObjectSearcher(
-                    "SELECT NetConnectionID, NetEnabled, AdapterTypeId, PhysicalAdapter, NetConnectionStatus, Name, Description FROM Win32_NetworkAdapter WHERE NetConnectionID IS NOT NULL"))
+                    "SELECT NetConnectionID, NetEnabled, PhysicalAdapter, NetConnectionStatus, Description FROM Win32_NetworkAdapter WHERE NetConnectionID IS NOT NULL"))
                 {
                     foreach (System.Management.ManagementObject obj in searcher.Get())
                     {
@@ -105,20 +115,33 @@ namespace EthernetToggle
                             continue;
                         }
 
+                        MsftAdapterState msft;
+                        msftStates.TryGetValue(name, out msft);
+
                         var description = Convert.ToString(obj["Description"]) ?? string.Empty;
-                        var isVirtual = IsVirtualAdapter(name, description, config.excludePatterns, obj);
+                        if (msft != null && !string.IsNullOrWhiteSpace(msft.InterfaceDescription))
+                        {
+                            description = msft.InterfaceDescription;
+                        }
+
+                        var isVirtual = IsVirtualAdapter(name, description, config.excludePatterns, obj, msft);
                         if (isVirtual && !includeVirtual)
                         {
                             continue;
                         }
 
                         var enabled = obj["NetEnabled"] is bool && (bool)obj["NetEnabled"];
-                        var connection = MapConnectionState(obj["NetConnectionStatus"]);
+                        var netConnectionStatus = ConvertNetConnectionStatus(obj["NetConnectionStatus"]);
+                        var mediaConnectState = msft != null ? msft.MediaConnectState : 0;
+                        var connection = MapMediaConnectionState(enabled, mediaConnectState, netConnectionStatus);
+                        var isConnected = enabled && connection == "Connected";
+
                         results.Add(new NetworkAdapterInfo
                         {
                             Name = name,
                             Description = description,
                             IsEnabled = enabled,
+                            IsConnected = isConnected,
                             IsVirtual = isVirtual,
                             ConnectionState = connection,
                             StatusText = BuildStatusText(enabled, connection, isVirtual)
@@ -133,8 +156,59 @@ namespace EthernetToggle
             return results.OrderBy(a => a.IsVirtual).ThenBy(a => a.Name).ToList();
         }
 
-        private static bool IsVirtualAdapter(string name, string description, string[] excludePatterns, System.Management.ManagementObject obj)
+        private static Dictionary<string, MsftAdapterState> GetMsftAdapterStates()
         {
+            var map = new Dictionary<string, MsftAdapterState>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                var scope = new System.Management.ManagementScope(@"\\.\root\StandardCimv2");
+                var query = new System.Management.ObjectQuery(
+                    "SELECT Name, MediaConnectState, InterfaceDescription, Virtual FROM MSFT_NetAdapter");
+
+                using (var searcher = new System.Management.ManagementObjectSearcher(scope, query))
+                {
+                    foreach (System.Management.ManagementObject obj in searcher.Get())
+                    {
+                        var name = Convert.ToString(obj["Name"]);
+                        if (string.IsNullOrWhiteSpace(name))
+                        {
+                            continue;
+                        }
+
+                        map[name] = new MsftAdapterState
+                        {
+                            MediaConnectState = obj["MediaConnectState"] != null ? Convert.ToInt32(obj["MediaConnectState"]) : 0,
+                            InterfaceDescription = Convert.ToString(obj["InterfaceDescription"]) ?? string.Empty,
+                            Virtual = obj["Virtual"] is bool && (bool)obj["Virtual"]
+                        };
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return map;
+        }
+
+        private static int ConvertNetConnectionStatus(object value)
+        {
+            if (value == null)
+            {
+                return 0;
+            }
+
+            return Convert.ToInt32(value);
+        }
+
+        private static bool IsVirtualAdapter(string name, string description, string[] excludePatterns, System.Management.ManagementObject obj, MsftAdapterState msft)
+        {
+            if (msft != null && msft.Virtual)
+            {
+                return true;
+            }
+
             var physical = obj["PhysicalAdapter"];
             if (physical is bool && !(bool)physical)
             {
@@ -157,30 +231,38 @@ namespace EthernetToggle
             return name.StartsWith("vEthernet", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string MapConnectionState(object value)
+        private static string MapMediaConnectionState(bool enabled, int mediaConnectState, int netConnectionStatus)
         {
-            if (!(value is ushort) && !(value is int))
+            if (!enabled)
             {
-                return "Unknown";
+                return "Disabled";
             }
 
-            var state = Convert.ToInt32(value);
-            switch (state)
+            switch (mediaConnectState)
             {
-                case 1: return "Disconnected";
-                case 2: return "Connecting";
-                case 3: return "Connected";
-                case 4: return "Disconnecting";
-                case 7: return "Disabled";
-                default: return "Unknown";
+                case 1:
+                    return "Connected";
+                case 2:
+                    return "Disconnected";
+                default:
+                    if (netConnectionStatus == 2)
+                    {
+                        return "Connecting";
+                    }
+
+                    return "No connection";
             }
         }
 
         private static string BuildStatusText(bool enabled, string connection, bool isVirtual)
         {
-            var admin = enabled ? "Enabled" : "Disabled";
+            if (!enabled)
+            {
+                return isVirtual ? "Disabled · Virtual" : "Disabled";
+            }
+
             var suffix = isVirtual ? " · Virtual" : string.Empty;
-            return admin + " · " + connection + suffix;
+            return "Enabled · " + connection + suffix;
         }
 
         public static void QueueRequest(string actionFile, string taskName, object payload)
@@ -499,7 +581,9 @@ namespace EthernetToggle
             {
                 Text = adapter.StatusText,
                 Font = new Font("Segoe UI", 8.5f),
-                ForeColor = adapter.IsEnabled ? Color.FromArgb(46, 160, 67) : Color.FromArgb(160, 160, 160),
+                ForeColor = adapter.IsConnected
+                    ? Color.FromArgb(46, 160, 67)
+                    : (adapter.IsEnabled ? Color.FromArgb(200, 180, 80) : Color.FromArgb(160, 160, 160)),
                 AutoSize = true,
                 Location = new Point(0, 20)
             };
@@ -583,10 +667,30 @@ namespace EthernetToggle
         {
             var eth = adapters.FirstOrDefault(a => a.Name.Equals(_config.ethernetAdapterName, StringComparison.OrdinalIgnoreCase));
             var wifi = adapters.FirstOrDefault(a => a.Name.Equals(_config.wifiAdapterName, StringComparison.OrdinalIgnoreCase));
-            var ethText = eth == null ? "Ethernet: n/a" : "Ethernet: " + (eth.IsEnabled ? "On" : "Off");
-            var wifiText = wifi == null ? "Wi-Fi: n/a" : "Wi-Fi: " + (wifi.IsEnabled ? "On" : "Off");
+            var ethText = "Ethernet: " + FormatSummaryState(eth);
+            var wifiText = "Wi-Fi: " + FormatSummaryState(wifi);
             _summaryLabel.Text = ethText + "   |   " + wifiText;
             _notifyIcon.Text = _config.appName + " · " + ethText + ", " + wifiText;
+        }
+
+        private static string FormatSummaryState(NetworkAdapterInfo adapter)
+        {
+            if (adapter == null)
+            {
+                return "n/a";
+            }
+
+            if (!adapter.IsEnabled)
+            {
+                return "Disabled";
+            }
+
+            if (adapter.IsConnected)
+            {
+                return "Connected";
+            }
+
+            return adapter.ConnectionState == "Connecting" ? "Connecting" : "Disconnected";
         }
 
         private void RunAdapterAction(string action, string adapterName)

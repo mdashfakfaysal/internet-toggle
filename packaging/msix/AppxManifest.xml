@@ -3,18 +3,19 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  IgnorableNamespaces="uap rescap desktop">
 
   <Identity
-    Name="[PACKAGE_IDENTITY_FROM_PARTNER_CENTER]"
-    Publisher="[PUBLISHER_CN_FROM_PARTNER_CENTER]"
+    Name="ITDoctor360.InternetSwitcher"
+    Publisher="CN=A6C6CB6A-0869-4AEA-B7A2-1C3DE44E3CCD"
     Version="1.0.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>Internet Switcher</DisplayName>
-    <PublisherDisplayName>[TO BE PROVIDED]</PublisherDisplayName>
-    <Description>Switch between Wi-Fi and Ethernet on Windows.</Description>
+    <PublisherDisplayName>IT Doctor 360</PublisherDisplayName>
+    <Description>Switch between Wi-Fi and Ethernet network adapters on Windows.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -27,13 +28,19 @@
   </Dependencies>
 
   <Applications>
-    <Application Id="InternetSwitcher" Executable="Internet Switcher Free.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application
+      Id="InternetSwitcher"
+      Executable="Internet Switcher Free.exe"
+      EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Internet Switcher"
         Description="Network adapter switcher for Windows"
-        BackgroundColor="transparent"
+        BackgroundColor="#1E1E1E"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <desktop:Extension Category="windows.fullTrustProcess" EntryPoint="Windows.FullTrustApplication" />
+      </Extensions>
     </Application>
   </Applications>
 
@@ -42,6 +49,3 @@
   </Capabilities>
 
 </Package>
-
-<!-- See docs/MICROSOFT_STORE_CAPABILITIES.md for capability justifications -->
-<!-- Replace placeholders from Partner Center before building MSIX -->

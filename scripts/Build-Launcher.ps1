@@ -98,7 +98,13 @@ if (Test-Path -LiteralPath $outputExe) {
     Remove-Item -LiteralPath $outputExe -Force -ErrorAction SilentlyContinue
 }
 
-Move-Item -LiteralPath $tempExe -Destination $outputExe -Force
+if (Test-Path -LiteralPath $outputExe) {
+    Copy-Item -LiteralPath $tempExe -Destination $outputExe -Force
+    Remove-Item -LiteralPath $tempExe -Force -ErrorAction SilentlyContinue
+}
+else {
+    Move-Item -LiteralPath $tempExe -Destination $outputExe -Force
+}
 Write-Host "Built $Edition edition: $outputExe (v$($versionInfo.version))"
 
 if ($Edition -eq 'Free') {

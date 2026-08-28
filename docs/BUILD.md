@@ -44,6 +44,23 @@ dist/pro/internet-switcher-pro-x64-1.0.0.zip
 dist/pro/internet-switcher-pro-x64-1.0.0.zip.sha256
 ```
 
+### Microsoft Store MSIX (Free edition)
+
+Requires Windows 10 SDK (`makeappx.exe`):
+
+```powershell
+winget install Microsoft.WindowsSDK.10.0.18362   # one-time
+.\packaging\msix\Build-Msix.ps1
+```
+
+Output:
+
+```
+dist/store/InternetSwitcher-Free-Store-x64-1-0-0-0.msix
+dist/store/InternetSwitcher-Free-Store-x64-1-0-0-0.msixupload
+dist/store/InternetSwitcher-Free-Store-x64-1-0-0-0.msix.sha256
+```
+
 ## Development Pro Testing (DEBUG builds only)
 
 ```powershell

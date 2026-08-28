@@ -12,6 +12,7 @@ $config = Get-EthernetToggleConfig -ConfigPath $paths.ConfigPath
 $sourceFile = Join-Path $repoRoot 'launcher\EthernetToggleApp.cs'
 $cscPath = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $outputExe = Join-Path $repoRoot "$($config.exeName).exe"
+$tempExe = Join-Path $repoRoot "$($config.exeName).build.tmp.exe"
 $frameworkDir = Split-Path -Parent $cscPath
 
 $systemManagement = Join-Path $frameworkDir 'System.Management.dll'
@@ -28,7 +29,7 @@ if (-not (Test-Path -LiteralPath $cscPath)) {
 $cscArgs = @(
     '/nologo'
     '/target:winexe'
-    "/out:$outputExe"
+    "/out:$tempExe"
     "/reference:$systemManagement"
     "/reference:$systemWebExtensions"
     "/reference:$frameworkDir\System.Windows.Forms.dll"
@@ -41,7 +42,7 @@ if (Test-Path -LiteralPath $paths.IconPath) {
         '/nologo'
         '/target:winexe'
         "/win32icon:$($paths.IconPath)"
-        "/out:$outputExe"
+        "/out:$tempExe"
         "/reference:$systemManagement"
         "/reference:$systemWebExtensions"
         "/reference:$frameworkDir\System.Windows.Forms.dll"
@@ -55,8 +56,26 @@ if ($LASTEXITCODE -ne 0) {
     throw "C# compiler failed with exit code $LASTEXITCODE"
 }
 
-if (-not (Test-Path -LiteralPath $outputExe)) {
+if (-not (Test-Path -LiteralPath $tempExe)) {
     throw "Failed to build launcher executable."
 }
+
+Get-Process -Name $config.exeName -ErrorAction SilentlyContinue | ForEach-Object {
+    try {
+        Stop-Process -Id $_.Id -Force -ErrorAction Stop
+        Write-Host "Stopped running app: $($_.Id)"
+    }
+    catch {
+        Write-Warning "Could not stop $($config.exeName) (PID $($_.Id)). Close it manually if the swap fails."
+    }
+}
+
+Start-Sleep -Milliseconds 500
+
+if (Test-Path -LiteralPath $outputExe) {
+    Remove-Item -LiteralPath $outputExe -Force -ErrorAction SilentlyContinue
+}
+
+Move-Item -LiteralPath $tempExe -Destination $outputExe -Force
 
 Write-Host "Built standalone app: $outputExe"

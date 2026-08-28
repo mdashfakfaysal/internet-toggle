@@ -19,8 +19,8 @@ $includePaths = @(
     'launcher',
     'scripts',
     'config.json',
-    'Ethernet Toggle.exe',
-    'Start Ethernet Toggle.bat',
+    'Internet Toggle.exe',
+    'Start Internet Toggle.bat',
     'README.md',
     'CHANGELOG.md',
     'LICENSE'

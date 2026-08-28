@@ -2,6 +2,9 @@
 dist/
 Desktop.ini
 *.lnk
+Internet Toggle.exe
+Internet Toggle.exe.old
+Internet Toggle.build.tmp.exe
 Ethernet Toggle.exe
 
 # Local runtime state

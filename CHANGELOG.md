@@ -5,6 +5,34 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-28
+
+### Added
+
+- **Settings panel** in the app header — control startup behavior from the UI
+- **Launch at Windows startup** toggle (creates/removes Startup folder shortcut immediately)
+- **Start minimized to tray** toggle (tray-only on launch; click tray icon to open window)
+- User settings persisted to `%LOCALAPPDATA%\InternetToggle\settings.json`
+
+### Changed
+
+- **Default startup behavior is tray-only** — no main window on login/startup
+- Install writes default settings (`launchAtStartup: true`, `startMinimizedToTray: true`)
+
+## [1.3.1] - 2026-08-28
+
+### Changed
+
+- **Rebrand to Internet Toggle** — app name, executable (`Internet Toggle.exe`), shortcuts, tray, and toasts
+- Scheduled task renamed to `ToggleInternetAdapter`
+- Regenerated logo with globe badge for Internet Toggle branding
+- Removed legacy **Ethernet Toggle** / **Network Toggle** shortcuts during install
+
+### Fixed
+
+- Adapter row buttons clipped on right edge
+- Incorrect status labels (`Disabled · Disabled`, false `Connecting` state)
+
 ## [1.3.0] - 2026-08-28
 
 ### Added
@@ -72,6 +100,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows 10 or 11
 - PowerShell 5.1 or later
 
+[1.4.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.4.0
+[1.3.1]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.3.1
 [1.3.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.3.0
 [1.2.1]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.1
 [1.2.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.0

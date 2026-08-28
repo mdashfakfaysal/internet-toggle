@@ -10,9 +10,9 @@ function Get-EthernetTogglePaths {
         ConfigPath  = Join-Path $repoRoot 'config.json'
         LogoPath    = Join-Path $repoRoot 'assets\logo.png'
         IconPath    = Join-Path $repoRoot 'assets\icon.ico'
-        ActionDir   = Join-Path $env:LOCALAPPDATA 'EthernetToggle'
-        ActionFile  = Join-Path $env:LOCALAPPDATA 'EthernetToggle\pending-action.json'
-        SignalFile  = Join-Path $env:LOCALAPPDATA 'EthernetToggle\show-window.signal'
+        ActionDir   = Join-Path $env:LOCALAPPDATA 'InternetToggle'
+        ActionFile  = Join-Path $env:LOCALAPPDATA 'InternetToggle\pending-action.json'
+        SignalFile  = Join-Path $env:LOCALAPPDATA 'InternetToggle\show-window.signal'
     }
 }
 
@@ -23,9 +23,9 @@ function Get-EthernetToggleConfig {
         adapterName         = 'Ethernet'
         ethernetAdapterName = 'Ethernet'
         wifiAdapterName     = 'Wi-Fi'
-        taskName            = 'ToggleEthernet'
-        appName             = 'Network Toggle'
-        exeName             = 'Ethernet Toggle'
+        taskName            = 'ToggleInternetAdapter'
+        appName             = 'Internet Toggle'
+        exeName             = 'Internet Toggle'
         excludePatterns     = @('vEthernet', 'Hyper-V')
     }
 
@@ -90,7 +90,7 @@ function Show-EthernetToggleToast {
         $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
         $xml.LoadXml($template)
         $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Network Toggle').Show($toast) | Out-Null
+        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Internet Toggle').Show($toast) | Out-Null
     }
     catch {
         Write-Host "$Title - $Message"

@@ -17,8 +17,27 @@ if ($existingTask) {
     Unregister-ScheduledTask -TaskName $config.taskName -Confirm:$false
     Write-Host "Removed scheduled task: $($config.taskName)"
 }
-else {
-    Write-Host "Scheduled task not found: $($config.taskName)"
+
+foreach ($legacyTaskName in @('ToggleEthernet')) {
+    $legacyTask = Get-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue
+    if ($legacyTask) {
+        Unregister-ScheduledTask -TaskName $legacyTaskName -Confirm:$false
+        Write-Host "Removed legacy scheduled task: $legacyTaskName"
+    }
+}
+
+foreach ($legacyName in @('Ethernet Toggle', 'Network Toggle')) {
+    foreach ($basePath in @(
+            (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'),
+            (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'),
+            (Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar')
+        )) {
+        $legacyShortcutPath = Join-Path $basePath "$legacyName.lnk"
+        if (Test-Path -LiteralPath $legacyShortcutPath) {
+            Remove-Item -LiteralPath $legacyShortcutPath -Force
+            Write-Host "Removed legacy shortcut: $legacyShortcutPath"
+        }
+    }
 }
 
 foreach ($shortcutPath in @($startupShortcutPath, $programsShortcutPath, $taskbarShortcutPath)) {
@@ -30,7 +49,7 @@ foreach ($shortcutPath in @($startupShortcutPath, $programsShortcutPath, $taskba
 
 Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object {
-        ($_.Name -eq 'Ethernet Toggle.exe') -or
+        ($_.Name -in @('Internet Toggle.exe', 'Ethernet Toggle.exe')) -or
         ($_.Name -in @('powershell.exe', 'pwsh.exe') -and
             ($_.CommandLine -like '*Ethernet-Launcher.ps1*' -or $_.CommandLine -like '*Launch-EthernetToggle.ps1*'))
     } |

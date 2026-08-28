@@ -27,8 +27,21 @@ function New-LogoBitmap {
     $cableBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 180, 180, 180))
     $darkBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 45, 45, 45))
 
+    $globeBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 70, 130, 220))
+    $globeFill = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 38, 38, 38))
+
     $scale = $Size / 256.0
     $graphics.ScaleTransform($scale, $scale)
+
+    # Globe badge (Internet Toggle branding)
+    $graphics.FillEllipse($globeFill, 18, 18, 56, 56)
+    $globePen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 70, 130, 220)), 4
+    $graphics.DrawEllipse($globePen, 20, 20, 52, 52)
+    $graphics.DrawArc($globePen, 28, 30, 36, 36, 0, 180)
+    $graphics.DrawLine($globePen, 24, 46, 68, 46)
+    $globePen.Dispose()
+    $globeFill.Dispose()
+    $globeBrush.Dispose()
 
     # Ethernet port body
     $graphics.FillRectangle($darkBrush, 72, 96, 112, 64)

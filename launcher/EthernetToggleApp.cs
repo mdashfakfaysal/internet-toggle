@@ -24,6 +24,8 @@ namespace EthernetToggle
         public string appName { get; set; }
         public string exeName { get; set; }
         public string[] excludePatterns { get; set; }
+        public bool launchAtStartup { get; set; }
+        public bool startMinimizedToTray { get; set; }
 
         public static AppConfig Load(string configPath)
         {
@@ -59,15 +61,110 @@ namespace EthernetToggle
         {
             return new AppConfig
             {
-                version = "1.3.0",
+                version = "1.4.0",
                 adapterName = "Ethernet",
                 ethernetAdapterName = "Ethernet",
                 wifiAdapterName = "Wi-Fi",
-                taskName = "ToggleEthernet",
-                appName = "Network Toggle",
-                exeName = "Ethernet Toggle",
-                excludePatterns = new[] { "vEthernet", "Hyper-V" }
+                taskName = "ToggleInternetAdapter",
+                appName = "Internet Toggle",
+                exeName = "Internet Toggle",
+                excludePatterns = new[] { "vEthernet", "Hyper-V" },
+                launchAtStartup = true,
+                startMinimizedToTray = true
             };
+        }
+    }
+
+    internal sealed class UserSettings
+    {
+        public bool launchAtStartup { get; set; }
+        public bool startMinimizedToTray { get; set; }
+
+        public static UserSettings FromDefaults(AppConfig config)
+        {
+            return new UserSettings
+            {
+                launchAtStartup = config.launchAtStartup,
+                startMinimizedToTray = config.startMinimizedToTray
+            };
+        }
+
+        public static UserSettings Load(string settingsPath, AppConfig config)
+        {
+            var settings = FromDefaults(config);
+            if (!File.Exists(settingsPath))
+            {
+                return settings;
+            }
+
+            try
+            {
+                var loaded = new JavaScriptSerializer().Deserialize<UserSettings>(File.ReadAllText(settingsPath));
+                if (loaded == null)
+                {
+                    return settings;
+                }
+
+                settings.launchAtStartup = loaded.launchAtStartup;
+                settings.startMinimizedToTray = loaded.startMinimizedToTray;
+                return settings;
+            }
+            catch
+            {
+                return settings;
+            }
+        }
+
+        public void Save(string settingsPath)
+        {
+            var dir = Path.GetDirectoryName(settingsPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            var json = new JavaScriptSerializer().Serialize(this);
+            File.WriteAllText(settingsPath, json, Encoding.UTF8);
+        }
+    }
+
+    internal static class StartupShortcutHelper
+    {
+        public static void ApplyLaunchAtStartup(bool enabled, AppConfig config, string exePath, string workingDirectory)
+        {
+            var shortcutPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Startup),
+                config.appName + ".lnk");
+
+            if (enabled)
+            {
+                CreateShortcut(shortcutPath, exePath, workingDirectory, config.appName + " - internet adapter control", exePath + ",0");
+                return;
+            }
+
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+
+        private static void CreateShortcut(string shortcutPath, string targetPath, string workingDirectory, string description, string iconLocation)
+        {
+            var shortcutType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shortcutType == null)
+            {
+                return;
+            }
+
+            dynamic shell = Activator.CreateInstance(shortcutType);
+            dynamic shortcut = shell.CreateShortcut(shortcutPath);
+            shortcut.TargetPath = targetPath;
+            shortcut.Arguments = string.Empty;
+            shortcut.WorkingDirectory = workingDirectory;
+            shortcut.Description = description;
+            shortcut.WindowStyle = 7;
+            shortcut.IconLocation = iconLocation;
+            shortcut.Save();
         }
     }
 
@@ -286,12 +383,117 @@ namespace EthernetToggle
         }
     }
 
+    internal sealed class SettingsForm : Form
+    {
+        private readonly CheckBox _startupCheck;
+        private readonly CheckBox _minimizedCheck;
+        private readonly UserSettings _settings;
+        private readonly Action<UserSettings> _onChanged;
+
+        public SettingsForm(UserSettings settings, Action<UserSettings> onChanged, string appName)
+        {
+            _settings = settings;
+            _onChanged = onChanged;
+
+            Text = appName + " Settings";
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterParent;
+            ClientSize = new Size(400, 210);
+            BackColor = Color.FromArgb(30, 30, 30);
+            ForeColor = Color.White;
+
+            var titleLabel = new Label
+            {
+                Text = "Startup behavior",
+                Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+                ForeColor = Color.White,
+                AutoSize = true,
+                Location = new Point(20, 16)
+            };
+
+            _startupCheck = CreateSettingCheckBox("Launch at Windows startup", 48, settings.launchAtStartup);
+            var startupDescription = CreateDescriptionLabel(
+                "Add or remove the app from the Windows Startup folder.",
+                70);
+
+            _minimizedCheck = CreateSettingCheckBox("Start minimized to tray", 104, settings.startMinimizedToTray);
+            var minimizedDescription = CreateDescriptionLabel(
+                "On launch, show only the tray icon. Click the tray icon to open the window.",
+                126);
+
+            _startupCheck.CheckedChanged += (s, e) =>
+            {
+                _settings.launchAtStartup = _startupCheck.Checked;
+                _onChanged(_settings);
+            };
+
+            _minimizedCheck.CheckedChanged += (s, e) =>
+            {
+                _settings.startMinimizedToTray = _minimizedCheck.Checked;
+                _onChanged(_settings);
+            };
+
+            var closeButton = new Button
+            {
+                Text = "Close",
+                Size = new Size(88, 30),
+                Location = new Point(292, 168),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(70, 130, 220),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                DialogResult = DialogResult.OK
+            };
+            closeButton.FlatAppearance.BorderSize = 0;
+
+            Controls.Add(titleLabel);
+            Controls.Add(_startupCheck);
+            Controls.Add(startupDescription);
+            Controls.Add(_minimizedCheck);
+            Controls.Add(minimizedDescription);
+            Controls.Add(closeButton);
+            AcceptButton = closeButton;
+        }
+
+        private static CheckBox CreateSettingCheckBox(string text, int top, bool isChecked)
+        {
+            return new CheckBox
+            {
+                Text = text,
+                Checked = isChecked,
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                ForeColor = Color.White,
+                Location = new Point(20, top)
+            };
+        }
+
+        private static Label CreateDescriptionLabel(string text, int top)
+        {
+            return new Label
+            {
+                Text = text,
+                Font = new Font("Segoe UI", 8.25f),
+                ForeColor = Color.FromArgb(160, 160, 160),
+                AutoSize = false,
+                Size = new Size(360, 32),
+                Location = new Point(38, top)
+            };
+        }
+    }
+
     internal sealed class MainApplicationContext : ApplicationContext
     {
         private readonly AppConfig _config;
         private readonly string _actionFile;
         private readonly string _signalFile;
+        private readonly string _settingsPath;
         private readonly string _logoPath;
+        private readonly string _exePath;
+        private readonly string _repoRoot;
+        private readonly UserSettings _userSettings;
         private readonly NotifyIcon _notifyIcon;
         private readonly Form _form;
         private readonly FlowLayoutPanel _adapterList;
@@ -304,9 +506,14 @@ namespace EthernetToggle
         public MainApplicationContext(AppConfig config, string repoRoot)
         {
             _config = config;
-            _actionFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EthernetToggle", "pending-action.json");
-            _signalFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EthernetToggle", "show-window.signal");
+            _repoRoot = repoRoot;
+            _exePath = Assembly.GetExecutingAssembly().Location;
+            _actionFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "pending-action.json");
+            _signalFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "show-window.signal");
+            _settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "settings.json");
             _logoPath = Path.Combine(repoRoot, "assets", "logo.png");
+            _userSettings = UserSettings.Load(_settingsPath, _config);
+            StartupShortcutHelper.ApplyLaunchAtStartup(_userSettings.launchAtStartup, _config, _exePath, _repoRoot);
 
             _form = BuildForm(out _adapterList, out _summaryLabel);
             MainForm = _form;
@@ -317,7 +524,11 @@ namespace EthernetToggle
             _timer.Start();
 
             RefreshAdapters();
-            _form.Show();
+
+            if (!_userSettings.startMinimizedToTray)
+            {
+                _form.Show();
+            }
         }
 
         private Form BuildForm(out FlowLayoutPanel adapterList, out Label summaryLabel)
@@ -376,6 +587,26 @@ namespace EthernetToggle
             headerPanel.Controls.Add(titleLabel);
             headerPanel.Controls.Add(subtitleLabel);
 
+            var settingsButton = new Button
+            {
+                Text = "Settings",
+                Size = new Size(84, 30),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(55, 55, 55),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            settingsButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
+            settingsButton.Click += (s, e) => ShowSettingsDialog();
+            headerPanel.Controls.Add(settingsButton);
+            headerPanel.Resize += (s, e) =>
+            {
+                settingsButton.Location = new Point(headerPanel.ClientSize.Width - settingsButton.Width - 16, 28);
+            };
+            settingsButton.Location = new Point(headerPanel.ClientSize.Width - settingsButton.Width - 16, 28);
+
             var quickPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -431,7 +662,7 @@ namespace EthernetToggle
             {
                 Dock = DockStyle.Bottom,
                 Height = 24,
-                Text = "Close hides to tray · Right-click tray icon to exit",
+                Text = "Close hides to tray · Settings in top bar · Right-click tray to exit",
                 Font = new Font("Segoe UI", 8.25f),
                 ForeColor = Color.FromArgb(120, 120, 120),
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -737,6 +968,22 @@ namespace EthernetToggle
             _form.Activate();
         }
 
+        private void ShowSettingsDialog()
+        {
+            using (var settingsForm = new SettingsForm(_userSettings, SaveUserSettings, _config.appName))
+            {
+                settingsForm.ShowDialog(_form);
+            }
+        }
+
+        private void SaveUserSettings(UserSettings settings)
+        {
+            _userSettings.launchAtStartup = settings.launchAtStartup;
+            _userSettings.startMinimizedToTray = settings.startMinimizedToTray;
+            _userSettings.Save(_settingsPath);
+            StartupShortcutHelper.ApplyLaunchAtStartup(_userSettings.launchAtStartup, _config, _exePath, _repoRoot);
+        }
+
         private void OnTimerTick(object sender, EventArgs e)
         {
             if (File.Exists(_signalFile))
@@ -834,7 +1081,7 @@ namespace EthernetToggle
 
     internal static class Program
     {
-        private const string MutexName = "Global\\EthernetToggleApp";
+        private const string MutexName = "Global\\InternetToggleApp";
 
         [STAThread]
         private static void Main()
@@ -863,7 +1110,7 @@ namespace EthernetToggle
             {
                 try
                 {
-                    var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EthernetToggle", "error.log");
+                    var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "error.log");
                     var logDir = Path.GetDirectoryName(logPath);
                     if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
                     {
@@ -875,13 +1122,13 @@ namespace EthernetToggle
                 {
                 }
 
-                MessageBox.Show(ex.ToString(), "Network Toggle Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.ToString(), "Internet Toggle Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private static void SignalExistingInstance()
         {
-            var signalFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EthernetToggle", "show-window.signal");
+            var signalFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "show-window.signal");
             var dir = Path.GetDirectoryName(signalFile);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {

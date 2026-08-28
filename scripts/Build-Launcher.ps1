@@ -99,8 +99,14 @@ if (Test-Path -LiteralPath $outputExe) {
 }
 
 if (Test-Path -LiteralPath $outputExe) {
-    Copy-Item -LiteralPath $tempExe -Destination $outputExe -Force
-    Remove-Item -LiteralPath $tempExe -Force -ErrorAction SilentlyContinue
+    try {
+        Copy-Item -LiteralPath $tempExe -Destination $outputExe -Force
+        Remove-Item -LiteralPath $tempExe -Force -ErrorAction SilentlyContinue
+    }
+    catch {
+        Write-Warning "Could not replace locked output: $outputExe"
+        Write-Host "Fresh build available at: $tempExe" -ForegroundColor Yellow
+    }
 }
 else {
     Move-Item -LiteralPath $tempExe -Destination $outputExe -Force

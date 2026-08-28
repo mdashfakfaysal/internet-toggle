@@ -81,11 +81,17 @@ Write-Host "Building Internet Switcher Free MSIX (v$Version)..." -ForegroundColo
 
 # Build Free exe (skip if already built and -SkipBuild)
 $freeExe = Join-Path $repoRoot 'Internet Switcher Free.exe'
+$tempFreeExe = Join-Path $repoRoot 'Internet Switcher Free.build.tmp.exe'
 if ($SkipBuild -and (Test-Path $freeExe)) {
     Write-Host "Skipping exe rebuild (using existing $freeExe)"
 }
 else {
     & (Join-Path $repoRoot 'scripts\Build-Launcher.ps1') -Edition Free
+}
+
+if ((Test-Path $tempFreeExe) -and (-not (Test-Path $freeExe) -or ((Get-Item $tempFreeExe).LastWriteTime -gt (Get-Item $freeExe).LastWriteTime))) {
+    $freeExe = $tempFreeExe
+    Write-Host "Using newer build artifact: $freeExe" -ForegroundColor Yellow
 }
 
 # Generate MSIX visual assets
@@ -106,17 +112,16 @@ Update-ManifestVersion -ManifestPath $manifestDest -PackageVersion $Version
 
 # Copy application files
 $filesToCopy = @(
-    @{ Source = 'Internet Switcher Free.exe'; Dest = 'Internet Switcher Free.exe' }
-    @{ Source = 'config.json'; Dest = 'config.json' }
-    @{ Source = 'version.json'; Dest = 'version.json' }
+    @{ SourcePath = $freeExe; Dest = 'Internet Switcher Free.exe' }
+    @{ SourcePath = (Join-Path $repoRoot 'config.json'); Dest = 'config.json' }
+    @{ SourcePath = (Join-Path $repoRoot 'version.json'); Dest = 'version.json' }
 )
 
 foreach ($item in $filesToCopy) {
-    $src = Join-Path $repoRoot $item.Source
-    if (-not (Test-Path $src)) {
-        throw "Missing required file: $($item.Source)"
+    if (-not (Test-Path $item.SourcePath)) {
+        throw "Missing required file: $($item.SourcePath)"
     }
-    Copy-Item $src (Join-Path $stagingDir $item.Dest) -Force
+    Copy-Item $item.SourcePath (Join-Path $stagingDir $item.Dest) -Force
 }
 
 # App runtime assets (lowercase path in package: assets\)

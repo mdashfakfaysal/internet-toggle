@@ -1,22 +1,26 @@
-# Ethernet Toggle
+# Network Toggle
 
-A tiny Windows utility to quickly enable or disable your Ethernet adapter from the system tray or a compact launcher window. Useful when dorm wired internet misbehaves and you want to switch to a mobile hotspot over Wi-Fi.
+A tiny Windows utility to quickly enable, disable, or switch between your network adapters from a compact launcher window or system tray. Perfect when dorm wired internet misbehaves and you want to switch to a mobile hotspot over Wi-Fi.
 
-![Ethernet Toggle launcher](assets/logo.png)
+![Network Toggle launcher](assets/logo.png)
 
 ## Features
 
-- **One-click toggle** for your Ethernet adapter
-- **System tray icon** with live on/off status
-- **Compact launcher window** with logo, status, and action buttons
-- **No UAC prompts** after a one-time admin install (uses a scheduled task)
-- **Single-instance app** — launching again focuses the existing window
-- **Configurable adapter name** via `config.json`
+- **Dynamic adapter list** — discovers Ethernet, Wi-Fi, and other adapters automatically
+- **Per-adapter Enable/Disable** — control each adapter individually
+- **Quick switch presets**
+  - **Switch to Ethernet** — disables Wi-Fi, enables Ethernet
+  - **Switch to Wi-Fi** — disables Ethernet, enables Wi-Fi
+- **Standalone Windows app** — `Ethernet Toggle.exe` with custom icon (no PowerShell in taskbar)
+- **System tray** — live status summary, quick actions, hide-to-tray
+- **No UAC prompts** after one-time admin install (uses a scheduled task)
+- **Single-instance app** — relaunching focuses the existing window
+- **Configurable** via `config.json` (adapter names, exclusions for virtual/Hyper-V adapters)
 
 ## Requirements
 
 - Windows 10 or 11
-- PowerShell 5.1 or later
+- PowerShell 5.1 or later (install only)
 - Administrator rights for **install only** (not for daily use)
 
 ## Download
@@ -25,22 +29,16 @@ Get the latest release from [GitHub Releases](https://github.com/mdashfakfaysal/
 
 1. Download the latest `ethernet-toggle-tray-v*.zip`
 2. Extract anywhere on your PC
-3. Run **`scripts\Install-EthernetToggle.ps1`** once as Administrator (builds `Ethernet Toggle.exe` and registers shortcuts)
-4. Launch from **Start search**, the **taskbar pin**, or double-click **`Ethernet Toggle.exe`**
-
-For silent toggles without UAC each time, the one-time install (below) is required.
+3. Run **`scripts\Install-EthernetToggle.ps1`** once as Administrator
+4. Launch from **Start search** (`Network Toggle`), the **taskbar pin**, or **`Ethernet Toggle.exe`**
 
 ## Quick Start
 
 1. Clone or download this repo.
-2. Run the **one-time install** (admin) — this builds `Ethernet Toggle.exe` and adds Start/taskbar shortcuts.
-3. Search **Ethernet Toggle** in Start or click the pinned taskbar icon.
-
-You can also double-click **`Start Ethernet Toggle.bat`** or **`Ethernet Toggle.exe`** directly.
+2. Run the **one-time install** (admin) — builds `Ethernet Toggle.exe` and registers shortcuts.
+3. Open the app and use **Switch to Wi-Fi** or **Switch to Ethernet**.
 
 ## Install (one-time, admin)
-
-Open PowerShell **as Administrator**, then run:
 
 ```powershell
 cd path\to\ethernet-toggle-tray
@@ -49,44 +47,47 @@ cd path\to\ethernet-toggle-tray
 
 This will:
 
-- Build **`Ethernet Toggle.exe`** with the custom app icon
+- Build **`Ethernet Toggle.exe`** (standalone app with your logo)
 - Register an elevated scheduled task for adapter changes
-- Add Start Menu, Startup, and taskbar shortcuts (with logo — not PowerShell)
+- Add Start Menu, Startup, and taskbar shortcuts
 - Start the app immediately
-
-After install, **Ethernet Toggle** appears in Windows search with its own icon. Pin it to the taskbar if it is not already pinned.
 
 ## Daily use
 
 | Action | How |
 |--------|-----|
-| Launch app | Start search **Ethernet Toggle**, taskbar pin, or double-click **`Ethernet Toggle.exe`** |
-| Toggle Ethernet | Left-click tray icon, or use the big button in the window |
-| Enable / Disable | Buttons in the window, or right-click tray icon |
+| Launch app | Start search **Network Toggle**, taskbar pin, or **`Ethernet Toggle.exe`** |
+| Switch to dorm hotspot | Click **Switch to Wi-Fi** |
+| Switch back to wired | Click **Switch to Ethernet** |
+| Toggle one adapter | Use **Enable** / **Disable** on its row |
 | Hide window | Close button minimizes to tray |
-| Exit completely | Right-click tray icon → **Exit**, then relaunch from Start or taskbar |
+| Exit completely | Right-click tray icon → **Exit** |
 
-The tray icon lives near the clock (bottom-right). If hidden, click the `^` arrow in the taskbar to reveal it.
+Virtual adapters (e.g. Hyper-V `vEthernet`) are hidden by default. Edit `excludePatterns` in `config.json` to change this.
 
-## Change adapter name
+## Configuration
 
-Edit `config.json` at the repo root:
+Edit `config.json`:
 
 ```json
 {
-  "adapterName": "Ethernet",
+  "version": "1.3.0",
+  "appName": "Network Toggle",
+  "exeName": "Ethernet Toggle",
   "taskName": "ToggleEthernet",
-  "appName": "Ethernet Toggle"
+  "ethernetAdapterName": "Ethernet",
+  "wifiAdapterName": "Wi-Fi",
+  "excludePatterns": ["vEthernet", "Hyper-V"]
 }
 ```
 
-Find your adapter name in PowerShell:
+Find your adapter names:
 
 ```powershell
-Get-NetAdapter | Select-Object Name, Status
+Get-NetAdapter | Select-Object Name, Status, InterfaceDescription
 ```
 
-Re-run `Install-EthernetToggle.ps1` after changing `taskName` or paths.
+Re-run `Install-EthernetToggle.ps1` after changing `taskName`.
 
 ## Uninstall
 
@@ -94,68 +95,13 @@ Re-run `Install-EthernetToggle.ps1` after changing `taskName` or paths.
 .\scripts\Uninstall-EthernetToggle.ps1
 ```
 
-## Project layout
-
-```
-ethernet-toggle-tray/
-├── assets/
-│   ├── logo.png          # App logo (256x256)
-│   └── icon.ico          # Tray/window/launcher icon
-├── launcher/
-│   └── EthernetToggleLauncher.cs
-├── Ethernet Toggle.exe   # Built by Install / Build-Launcher (not in git)
-├── config.json           # Adapter name and app settings
-├── scripts/
-│   ├── EthernetToggle.Common.ps1
-│   ├── Ethernet-Launcher.ps1   # Main UI + tray app
-│   ├── Launch-EthernetToggle.ps1
-│   ├── Build-Launcher.ps1      # Compiles Ethernet Toggle.exe
-│   ├── Toggle-Ethernet.ps1     # Elevated toggle logic
-│   ├── Install-EthernetToggle.ps1
-│   ├── Uninstall-EthernetToggle.ps1
-│   └── New-EthernetToggleAssets.ps1
-├── Start Ethernet Toggle.bat
-├── LICENSE
-└── README.md
-```
-
-## Regenerate logo assets
-
-```powershell
-.\scripts\New-EthernetToggleAssets.ps1
-```
-
 ## Build a release package
 
-Maintainers can build the downloadable zip locally:
-
 ```powershell
-.\scripts\Build-Release.ps1 -Version 1.0.0
+.\scripts\Build-Release.ps1 -Version 1.3.0
 ```
 
-Output: `dist/ethernet-toggle-tray-v1.0.0.zip`
-
-Pushing a version tag (for example `v1.0.0`) triggers the GitHub Actions release workflow, which builds the zip and publishes a GitHub Release automatically.
-
-## Upload to GitHub
-
-`gh` is not required. From the project folder:
-
-```powershell
-git init -b main
-git add -A
-git commit -m "Initial commit: Ethernet Toggle tray utility"
-```
-
-Then on [github.com](https://github.com/new):
-
-1. Create a new repository (e.g. `ethernet-toggle-tray`) — **do not** add a README or license (this repo already has them).
-2. Run the commands GitHub shows, for example:
-
-```powershell
-git remote add origin https://github.com/YOUR_USERNAME/ethernet-toggle-tray.git
-git push -u origin main
-```
+Pushing a version tag (e.g. `v1.3.0`) triggers GitHub Actions to publish a release zip automatically.
 
 ## License
 

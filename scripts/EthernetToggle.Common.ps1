@@ -11,7 +11,7 @@ function Get-EthernetTogglePaths {
         LogoPath    = Join-Path $repoRoot 'assets\logo.png'
         IconPath    = Join-Path $repoRoot 'assets\icon.ico'
         ActionDir   = Join-Path $env:LOCALAPPDATA 'EthernetToggle'
-        ActionFile  = Join-Path $env:LOCALAPPDATA 'EthernetToggle\pending-action.txt'
+        ActionFile  = Join-Path $env:LOCALAPPDATA 'EthernetToggle\pending-action.json'
         SignalFile  = Join-Path $env:LOCALAPPDATA 'EthernetToggle\show-window.signal'
     }
 }
@@ -20,9 +20,13 @@ function Get-EthernetToggleConfig {
     param([string]$ConfigPath)
 
     $defaults = [PSCustomObject]@{
-        adapterName = 'Ethernet'
-        taskName    = 'ToggleEthernet'
-        appName     = 'Ethernet Toggle'
+        adapterName         = 'Ethernet'
+        ethernetAdapterName = 'Ethernet'
+        wifiAdapterName     = 'Wi-Fi'
+        taskName            = 'ToggleEthernet'
+        appName             = 'Network Toggle'
+        exeName             = 'Ethernet Toggle'
+        excludePatterns     = @('vEthernet', 'Hyper-V')
     }
 
     if (-not (Test-Path -LiteralPath $ConfigPath)) {
@@ -31,10 +35,19 @@ function Get-EthernetToggleConfig {
 
     try {
         $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+        $exclude = @('vEthernet', 'Hyper-V')
+        if ($config.excludePatterns) {
+            $exclude = @($config.excludePatterns | ForEach-Object { [string]$_ })
+        }
+
         return [PSCustomObject]@{
-            adapterName = if ($config.adapterName) { [string]$config.adapterName } else { $defaults.adapterName }
-            taskName    = if ($config.taskName) { [string]$config.taskName } else { $defaults.taskName }
-            appName     = if ($config.appName) { [string]$config.appName } else { $defaults.appName }
+            adapterName         = if ($config.adapterName) { [string]$config.adapterName } elseif ($config.ethernetAdapterName) { [string]$config.ethernetAdapterName } else { $defaults.adapterName }
+            ethernetAdapterName = if ($config.ethernetAdapterName) { [string]$config.ethernetAdapterName } elseif ($config.adapterName) { [string]$config.adapterName } else { $defaults.ethernetAdapterName }
+            wifiAdapterName     = if ($config.wifiAdapterName) { [string]$config.wifiAdapterName } else { $defaults.wifiAdapterName }
+            taskName            = if ($config.taskName) { [string]$config.taskName } else { $defaults.taskName }
+            appName             = if ($config.appName) { [string]$config.appName } else { $defaults.appName }
+            exeName             = if ($config.exeName) { [string]$config.exeName } else { $defaults.exeName }
+            excludePatterns     = $exclude
         }
     }
     catch {
@@ -77,7 +90,7 @@ function Show-EthernetToggleToast {
         $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
         $xml.LoadXml($template)
         $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Ethernet Toggle').Show($toast) | Out-Null
+        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Network Toggle').Show($toast) | Out-Null
     }
     catch {
         Write-Host "$Title - $Message"
@@ -101,26 +114,77 @@ function Invoke-EthernetToggleAction {
         [string]$TaskName,
         [string]$ActionFile,
         [ValidateSet('Toggle', 'Enable', 'Disable')]
-        [string]$Action
+        [string]$Action,
+        [string]$AdapterName = $null
     )
 
-    Set-Content -LiteralPath $ActionFile -Value $Action -Encoding ASCII -Force
+    $payload = [ordered]@{
+        type    = $Action
+        adapter = $AdapterName
+    }
+    Set-Content -LiteralPath $ActionFile -Value ($payload | ConvertTo-Json -Compress) -Encoding UTF8 -Force
     Start-Process -FilePath 'schtasks.exe' -ArgumentList @('/Run', '/TN', $TaskName) -WindowStyle Hidden -Wait:$false | Out-Null
 }
 
-function Resolve-EthernetToggleAction {
+function Resolve-NetworkToggleRequest {
     param(
         [string]$ActionFile,
-        [string]$DefaultAction
+        [string]$DefaultAction,
+        [string]$DefaultAdapter
     )
 
     if (Test-Path -LiteralPath $ActionFile) {
         try {
-            $pendingAction = (Get-Content -LiteralPath $ActionFile -Raw).Trim()
+            $raw = Get-Content -LiteralPath $ActionFile -Raw
             Remove-Item -LiteralPath $ActionFile -Force -ErrorAction SilentlyContinue
 
-            if ($pendingAction -in @('Toggle', 'Enable', 'Disable')) {
-                return $pendingAction
+            if ($raw.Trim().StartsWith('{')) {
+                $json = $raw | ConvertFrom-Json
+                $type = if ($json.type) { [string]$json.type } else { $DefaultAction }
+
+                if ($type -eq 'Switch') {
+                    return [PSCustomObject]@{
+                        Type    = 'Switch'
+                        Enable  = @($json.enable | ForEach-Object { [string]$_ })
+                        Disable = @($json.disable | ForEach-Object { [string]$_ })
+                        Message = if ($json.message) { [string]$json.message } else { 'Network adapters updated.' }
+                    }
+                }
+
+                if ($type -eq 'Batch') {
+                    $items = @()
+                    foreach ($entry in $json.items) {
+                        $items += [PSCustomObject]@{
+                            Adapter = [string]$entry.adapter
+                            Action  = [string]$entry.action
+                        }
+                    }
+                    return [PSCustomObject]@{
+                        Type    = 'Batch'
+                        Items   = $items
+                        Message = if ($json.message) { [string]$json.message } else { 'Network adapters updated.' }
+                    }
+                }
+
+                return [PSCustomObject]@{
+                    Type    = $type
+                    Adapter = if ($json.adapter) { [string]$json.adapter } else { $DefaultAdapter }
+                }
+            }
+
+            $legacy = $raw.Trim()
+            if ($legacy -match '^(Toggle|Enable|Disable)\|(.+)$') {
+                return [PSCustomObject]@{
+                    Type    = $Matches[1]
+                    Adapter = $Matches[2]
+                }
+            }
+
+            if ($legacy -in @('Toggle', 'Enable', 'Disable')) {
+                return [PSCustomObject]@{
+                    Type    = $legacy
+                    Adapter = $DefaultAdapter
+                }
             }
         }
         catch {
@@ -128,69 +192,10 @@ function Resolve-EthernetToggleAction {
         }
     }
 
-    return $DefaultAction
-}
-
-function New-EthernetToggleFallbackIcon {
-    param([bool]$IsOn)
-
-    $bitmap = New-Object System.Drawing.Bitmap 16, 16
-    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-
-    $fillColor = if ($IsOn) {
-        [System.Drawing.Color]::FromArgb(255, 46, 160, 67)
+    return [PSCustomObject]@{
+        Type    = $DefaultAction
+        Adapter = $DefaultAdapter
     }
-    else {
-        [System.Drawing.Color]::FromArgb(255, 140, 140, 140)
-    }
-
-    $brush = New-Object System.Drawing.SolidBrush $fillColor
-    $graphics.FillEllipse($brush, 2, 2, 12, 12)
-    $brush.Dispose()
-    $graphics.Dispose()
-
-    $iconHandle = $bitmap.GetHicon()
-    $icon = [System.Drawing.Icon]::FromHandle($iconHandle)
-    return ,@($icon, $bitmap, $iconHandle)
-}
-
-function Get-EthernetToggleTrayIcon {
-    param(
-        [string]$IconPath,
-        [bool]$IsOn
-    )
-
-    if (Test-Path -LiteralPath $IconPath) {
-        try {
-            $baseIcon = New-Object System.Drawing.Icon($IconPath)
-            $bitmap = $baseIcon.ToBitmap()
-            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-        $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-
-            $statusColor = if ($IsOn) {
-                [System.Drawing.Color]::FromArgb(255, 46, 160, 67)
-            }
-            else {
-                [System.Drawing.Color]::FromArgb(255, 140, 140, 140)
-            }
-
-            $brush = New-Object System.Drawing.SolidBrush $statusColor
-            $graphics.FillEllipse($brush, 18, 18, 10, 10)
-            $brush.Dispose()
-            $graphics.Dispose()
-
-            $iconHandle = $bitmap.GetHicon()
-            $icon = [System.Drawing.Icon]::FromHandle($iconHandle)
-            $baseIcon.Dispose()
-            return ,@($icon, $bitmap, $iconHandle)
-        }
-        catch {
-            # Fall through to generated icon.
-        }
-    }
-
-    return New-EthernetToggleFallbackIcon -IsOn $IsOn
 }
 
 function Request-EthernetToggleWindowFocus {

@@ -11,13 +11,14 @@ $paths = Get-EthernetTogglePaths -ScriptRoot $scriptRoot
 $config = Get-EthernetToggleConfig -ConfigPath $paths.ConfigPath
 
 $buildLauncherScript = Join-Path $scriptRoot 'Build-Launcher.ps1'
-$toggleScript = Join-Path $scriptRoot 'Toggle-Ethernet.ps1'
+$toggleScript = Join-Path $scriptRoot 'Toggle-NetworkAdapter.ps1'
 $startupShortcutName = "$($config.appName).lnk"
+$legacyShortcutName = "$($config.exeName).lnk"
 $startupFolder = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
 $startupShortcutPath = Join-Path $startupFolder $startupShortcutName
 $programsShortcutPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$startupShortcutName"
 $taskbarShortcutPath = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\$startupShortcutName"
-$launcherExe = Join-Path $repoRoot "$($config.appName).exe"
+$launcherExe = Join-Path $repoRoot "$($config.exeName).exe"
 
 function New-AppShortcut {
     param(
@@ -65,9 +66,9 @@ if (-not (Test-Path -LiteralPath $launcherExe)) {
     throw "Launcher executable was not created: $launcherExe"
 }
 
-$adapter = Get-NetAdapter -Name $config.adapterName -ErrorAction SilentlyContinue
+$adapter = Get-NetAdapter -Name $config.ethernetAdapterName -ErrorAction SilentlyContinue
 if (-not $adapter) {
-    Write-Warning "Adapter named `"$($config.adapterName)`" was not found. Update config.json if your adapter uses a different name."
+    Write-Warning "Adapter named `"$($config.ethernetAdapterName)`" was not found. Update config.json if your adapter uses a different name."
 }
 
 $action = New-ScheduledTaskAction `
@@ -86,7 +87,7 @@ Register-ScheduledTask `
     -Force | Out-Null
 
 $iconLocation = "$launcherExe,0"
-$shortcutDescription = "$($config.appName) - Ethernet adapter toggle"
+$shortcutDescription = "$($config.appName) - network adapter control"
 
 New-AppShortcut `
     -ShortcutPath $startupShortcutPath `
@@ -110,7 +111,10 @@ New-AppShortcut `
     -IconLocation $iconLocation
 
 Remove-LegacyShortcuts -ShortcutPaths @(
-    'C:\Users\Admin\Scripts\EthernetToggle\Ethernet Toggle.lnk'
+    'C:\Users\Admin\Scripts\EthernetToggle\Ethernet Toggle.lnk',
+    (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\$legacyShortcutName"),
+    (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$legacyShortcutName"),
+    (Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\$legacyShortcutName")
 )
 
 Write-Host "$($config.appName) installed successfully."
@@ -125,4 +129,4 @@ Write-Host 'Starting the app now...'
 
 Start-Process -FilePath $launcherExe -WorkingDirectory $repoRoot -WindowStyle Hidden
 
-Write-Host 'Search for "Ethernet Toggle" in Start, or use the pinned taskbar icon.'
+Write-Host "Search for `"$($config.appName)`" in Start, or use the pinned taskbar icon."

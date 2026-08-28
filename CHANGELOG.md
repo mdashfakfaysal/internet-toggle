@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-28
+
+### Added
+
+- **Full network adapter toggle** — dynamic adapter list with per-row Enable/Disable
+- **Quick switch presets**: Switch to Ethernet / Switch to Wi-Fi (simultaneous disable+enable)
+- App renamed to **Network Toggle** (executable remains `Ethernet Toggle.exe` for compatibility)
+- JSON action payload for elevated task (`pending-action.json`) supporting any adapter by name
+- `config.json` fields: `ethernetAdapterName`, `wifiAdapterName`, `excludePatterns`, `exeName`
+- Virtual/Hyper-V adapters excluded by default (`vEthernet`, `Hyper-V`)
+
+### Changed
+
+- Expanded UI (420×520) with scrollable adapter list, quick-switch buttons, status summary
+- Scheduled task now runs `Toggle-NetworkAdapter.ps1`
+
 ## [1.2.1] - 2026-08-28
 
 ### Fixed
@@ -52,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows 10 or 11
 - PowerShell 5.1 or later
 
+[1.3.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.3.0
 [1.2.1]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.1
 [1.2.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.1.0

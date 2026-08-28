@@ -11,7 +11,7 @@ $config = Get-EthernetToggleConfig -ConfigPath $paths.ConfigPath
 
 $sourceFile = Join-Path $repoRoot 'launcher\EthernetToggleApp.cs'
 $cscPath = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-$outputExe = Join-Path $repoRoot "$($config.appName).exe"
+$outputExe = Join-Path $repoRoot "$($config.exeName).exe"
 $frameworkDir = Split-Path -Parent $cscPath
 
 $systemManagement = Join-Path $frameworkDir 'System.Management.dll'

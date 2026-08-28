@@ -1,0 +1,11 @@
+﻿{
+    "productName":  "Internet Switcher",
+    "freeDisplayName":  "Internet Switcher Free",
+    "proDisplayName":  "Internet Switcher Pro",
+    "version":  "1.0.0",
+    "assemblyVersion":  "1.0.0.0",
+    "fileVersion":  "1.0.0.0",
+    "company":  "Internet Switcher",
+    "copyright":  "Copyright (c) 2026",
+    "githubRepo":  "https://github.com/mdashfakfaysal/internet-toggle"
+}

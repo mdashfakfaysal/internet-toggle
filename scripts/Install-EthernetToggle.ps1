@@ -17,8 +17,8 @@ $startupFolder = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\S
 $startupShortcutPath = Join-Path $startupFolder $startupShortcutName
 $programsShortcutPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$startupShortcutName"
 $taskbarShortcutPath = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\$startupShortcutName"
-$launcherExe = Join-Path $repoRoot "$($config.exeName).exe"
-$legacyExe = Join-Path $repoRoot 'Ethernet Toggle.exe'
+$launcherExe = Join-Path $repoRoot 'Internet Switcher Free.exe'
+$legacyExe = Join-Path $repoRoot 'Internet Toggle.exe'
 
 function New-AppShortcut {
     param(
@@ -61,7 +61,7 @@ if (-not (Test-Path -LiteralPath $toggleScript)) {
 }
 
 & (Join-Path $scriptRoot 'New-EthernetToggleAssets.ps1')
-& $buildLauncherScript
+& $buildLauncherScript -Edition Free
 
 if (-not (Test-Path -LiteralPath $launcherExe)) {
     throw "Launcher executable was not created: $launcherExe"

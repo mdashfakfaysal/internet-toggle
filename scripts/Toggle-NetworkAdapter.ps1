@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptRoot 'EthernetToggle.Common.ps1')
+. (Join-Path $scriptRoot 'AdapterValidation.ps1')
 
 $paths = Get-EthernetTogglePaths -ScriptRoot $scriptRoot
 $config = Get-EthernetToggleConfig -ConfigPath $paths.ConfigPath
@@ -23,6 +24,8 @@ function Set-AdapterState {
         [ValidateSet('Enable', 'Disable')]
         [string]$DesiredState
     )
+
+    Assert-ValidAdapterName -Name $Name
 
     $adapter = Get-NetAdapter -Name $Name -ErrorAction SilentlyContinue
     if (-not $adapter) {
@@ -57,6 +60,7 @@ switch ($request.Type) {
     }
     default {
         $target = if ($request.Adapter) { $request.Adapter } else { $config.adapterName }
+        Assert-ValidAdapterName -Name $target
         $adapter = Get-NetAdapter -Name $target -ErrorAction SilentlyContinue
         if (-not $adapter) {
             Show-EthernetToggleToast -Title 'Adapter missing' -Message "Could not find `"$target`"."

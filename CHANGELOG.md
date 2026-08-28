@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-08-28
+
+### Added — Commercial Release
+
+- **Internet Switcher Free** and **Internet Switcher Pro** editions from single codebase
+- `EditionService` / `Feature` gating with `ILicenseProvider` abstraction
+- Dev Pro testing via `INTERNET_SWITCHER_DEV_PRO=1` (DEBUG builds only)
+- About dialog, upgrade dialog for Pro features, version display in UI
+- Basic global hotkey: Ctrl+Alt+W → Switch to Wi-Fi
+- `version.json` single source of truth for semantic versioning
+- Adapter name validation (C# + PowerShell) to prevent shell injection
+- Local diagnostic logging to `%LOCALAPPDATA%\InternetToggle\logs\`
+- Free + Pro release packages with SHA-256 checksums
+- GitHub Actions CI and release workflows
+- Comprehensive documentation (`docs/`), Store assets, MSIX/Inno Setup skeletons
+- `PRIVACY.md`, `THIRD_PARTY_NOTICES.md`
+
+### Changed
+
+- Product rebranded to **Internet Switcher** (Free/Pro)
+- Free build: `Internet Switcher Free.exe` (+ legacy `Internet Toggle.exe` alias)
+- Pro build: `Internet Switcher Pro.exe`
+- Release zips: `internet-switcher-free-x64-*.zip`, `internet-switcher-pro-x64-*.zip`
+
 ## [1.4.0] - 2026-08-28
 
 ### Added

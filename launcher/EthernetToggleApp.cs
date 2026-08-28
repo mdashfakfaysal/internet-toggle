@@ -11,6 +11,9 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
+using EthernetToggle.Core;
+using EthernetToggle.Edition;
+using EthernetToggle.UI;
 
 namespace EthernetToggle
 {
@@ -499,6 +502,8 @@ namespace EthernetToggle
         private readonly FlowLayoutPanel _adapterList;
         private readonly Label _summaryLabel;
         private readonly System.Windows.Forms.Timer _timer;
+        private readonly AppVersionInfo _productVersion;
+        private GlobalHotkey _wifiHotkey;
         private Bitmap _heldBitmap;
         private IntPtr _iconHandle = IntPtr.Zero;
         private bool _isClosing;
@@ -507,6 +512,7 @@ namespace EthernetToggle
         {
             _config = config;
             _repoRoot = repoRoot;
+            _productVersion = AppVersionInfo.Load(repoRoot);
             _exePath = Assembly.GetExecutingAssembly().Location;
             _actionFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "pending-action.json");
             _signalFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "show-window.signal");
@@ -524,6 +530,7 @@ namespace EthernetToggle
             _timer.Start();
 
             RefreshAdapters();
+            RegisterBasicHotkey();
 
             if (!_userSettings.startMinimizedToTray)
             {
@@ -531,11 +538,29 @@ namespace EthernetToggle
             }
         }
 
+        private void RegisterBasicHotkey()
+        {
+            if (!EditionService.CanUseFeature(Feature.BasicHotkey))
+            {
+                return;
+            }
+
+            try
+            {
+                _wifiHotkey = new GlobalHotkey(_form, 1, Keys.W, 0x0001 | 0x0002);
+                _wifiHotkey.HotkeyPressed += (s, e) => SwitchToWifi();
+            }
+            catch
+            {
+            }
+        }
+
         private Form BuildForm(out FlowLayoutPanel adapterList, out Label summaryLabel)
         {
+            var windowTitle = _productVersion.productName + " " + _productVersion.GetDisplayVersion();
             var form = new Form
             {
-                Text = _config.appName,
+                Text = windowTitle,
                 ClientSize = new Size(480, 500),
                 MinimumSize = new Size(480, 500),
                 FormBorderStyle = FormBorderStyle.FixedSingle,
@@ -567,7 +592,7 @@ namespace EthernetToggle
 
             var titleLabel = new Label
             {
-                Text = _config.appName,
+                Text = EditionService.GetEditionLabel(),
                 Font = new Font("Segoe UI", 14f, FontStyle.Bold),
                 ForeColor = Color.White,
                 AutoSize = true,
@@ -576,7 +601,7 @@ namespace EthernetToggle
 
             var subtitleLabel = new Label
             {
-                Text = "Internet adapter control",
+                Text = "Internet adapter control · v" + _productVersion.GetDisplayVersion(),
                 Font = new Font("Segoe UI", 9f),
                 ForeColor = Color.FromArgb(170, 170, 170),
                 AutoSize = true,
@@ -587,25 +612,27 @@ namespace EthernetToggle
             headerPanel.Controls.Add(titleLabel);
             headerPanel.Controls.Add(subtitleLabel);
 
-            var settingsButton = new Button
-            {
-                Text = "Settings",
-                Size = new Size(84, 30),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(55, 55, 55),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            settingsButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
+            var aboutButton = CreateHeaderButton("About");
+            aboutButton.Click += (s, e) => ShowAboutDialog();
+            headerPanel.Controls.Add(aboutButton);
+
+            var settingsButton = CreateHeaderButton("Settings");
             settingsButton.Click += (s, e) => ShowSettingsDialog();
             headerPanel.Controls.Add(settingsButton);
+
+            var profilesButton = CreateHeaderButton("Profiles");
+            profilesButton.Click += (s, e) => ShowProFeature(Feature.MultipleProfiles);
+            headerPanel.Controls.Add(profilesButton);
+
             headerPanel.Resize += (s, e) =>
             {
-                settingsButton.Location = new Point(headerPanel.ClientSize.Width - settingsButton.Width - 16, 28);
+                profilesButton.Location = new Point(headerPanel.ClientSize.Width - profilesButton.Width - 16, 28);
+                settingsButton.Location = new Point(profilesButton.Left - settingsButton.Width - 8, 28);
+                aboutButton.Location = new Point(settingsButton.Left - aboutButton.Width - 8, 28);
             };
-            settingsButton.Location = new Point(headerPanel.ClientSize.Width - settingsButton.Width - 16, 28);
+            profilesButton.Location = new Point(headerPanel.ClientSize.Width - profilesButton.Width - 16, 28);
+            settingsButton.Location = new Point(profilesButton.Left - settingsButton.Width - 8, 28);
+            aboutButton.Location = new Point(settingsButton.Left - aboutButton.Width - 8, 28);
 
             var quickPanel = new TableLayoutPanel
             {
@@ -662,7 +689,7 @@ namespace EthernetToggle
             {
                 Dock = DockStyle.Bottom,
                 Height = 24,
-                Text = "Close hides to tray · Settings in top bar · Right-click tray to exit",
+                Text = "Close hides to tray · Ctrl+Alt+W switches to Wi-Fi · Right-click tray to exit",
                 Font = new Font("Segoe UI", 8.25f),
                 ForeColor = Color.FromArgb(120, 120, 120),
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -693,6 +720,23 @@ namespace EthernetToggle
             };
 
             return form;
+        }
+
+        private static Button CreateHeaderButton(string text)
+        {
+            var button = new Button
+            {
+                Text = text,
+                Size = new Size(72, 30),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(55, 55, 55),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            button.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
+            return button;
         }
 
         private static Button CreateQuickButton(string text)
@@ -926,11 +970,23 @@ namespace EthernetToggle
 
         private void RunAdapterAction(string action, string adapterName)
         {
+            try
+            {
+                AdapterNameValidator.ValidateOrThrow(adapterName);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("AdapterActionValidation", adapterName, ex.Message);
+                MessageBox.Show(_form, "Invalid adapter name.", _config.appName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             AdapterHelper.QueueRequest(_actionFile, _config.taskName, new Dictionary<string, object>
             {
                 { "type", action },
                 { "adapter", adapterName }
             });
+            AppLogger.Info(action, adapterName, true, "Queued adapter action");
             Thread.Sleep(900);
             RefreshAdapters();
         }
@@ -973,6 +1029,28 @@ namespace EthernetToggle
             using (var settingsForm = new SettingsForm(_userSettings, SaveUserSettings, _config.appName))
             {
                 settingsForm.ShowDialog(_form);
+            }
+        }
+
+        private void ShowAboutDialog()
+        {
+            using (var aboutForm = new AboutForm(_repoRoot))
+            {
+                aboutForm.ShowDialog(_form);
+            }
+        }
+
+        private void ShowProFeature(Feature feature)
+        {
+            if (EditionService.CanUseFeature(feature))
+            {
+                MessageBox.Show(_form, "This Pro feature is enabled in your edition.", EditionService.GetEditionLabel(), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var upgrade = new UpgradeDialog(_repoRoot, feature))
+            {
+                upgrade.ShowDialog(_form);
             }
         }
 
@@ -1058,6 +1136,12 @@ namespace EthernetToggle
 
         private void Shutdown()
         {
+            if (_wifiHotkey != null)
+            {
+                _wifiHotkey.Dispose();
+                _wifiHotkey = null;
+            }
+
             _timer.Stop();
             _timer.Dispose();
             _notifyIcon.Visible = false;
@@ -1102,6 +1186,7 @@ namespace EthernetToggle
                     var exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
                     var configPath = Path.Combine(exeDir, "config.json");
                     var config = AppConfig.Load(configPath);
+                    EditionService.Initialize(null);
 
                     Application.Run(new MainApplicationContext(config, exeDir));
                 }

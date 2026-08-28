@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Free edition
+        shell: pwsh
+        run: ./scripts/Build-Launcher.ps1 -Edition Free
+
+      - name: Build Pro edition
+        shell: pwsh
+        run: ./scripts/Build-Launcher.ps1 -Edition Pro
+
+      - name: Run tests
+        shell: pwsh
+        run: ./tests/Run-Tests.ps1

@@ -1,140 +1,165 @@
-# Internet Toggle
+# Internet Switcher
 
-A tiny Windows utility to quickly enable, disable, or switch between your network adapters from a compact launcher window or system tray. Perfect when dorm wired internet misbehaves and you want to switch to a mobile hotspot over Wi-Fi.
+**Instantly switch between Wi-Fi and Ethernet on Windows — from your system tray.**
 
-**Repository:** [github.com/mdashfakfaysal/internet-toggle](https://github.com/mdashfakfaysal/internet-toggle)  
-**Latest release:** [v1.4.0](https://github.com/mdashfakfaysal/internet-toggle/releases/latest)
+[![Release](https://img.shields.io/github/v/release/mdashfakfaysal/internet-toggle)](https://github.com/mdashfakfaysal/internet-toggle/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-![Internet Toggle launcher](assets/logo.png)
+**Repository:** [github.com/mdashfakfaysal/internet-toggle](https://github.com/mdashfakfaysal/internet-toggle)
+
+![Internet Switcher](assets/logo.png)
+
+> Dorm Wi-Fi acting up? Switch to your phone hotspot in one click. No repeated admin prompts after setup.
+
+## Free vs Pro
+
+| Feature | Free | Pro |
+|---------|:----:|:---:|
+| Enable / disable adapters | Yes | Yes |
+| Switch Ethernet ↔ Wi-Fi | Yes | Yes |
+| Adapter status display | Yes | Yes |
+| System tray + startup | Yes | Yes |
+| Basic hotkey (Ctrl+Alt+W) | Yes | Yes |
+| Multiple network profiles | — | Yes |
+| Automatic failover | — | Yes |
+| Schedules & rules | — | Yes |
+| Connection history | — | Yes |
+| Import / export config | — | Yes |
 
 ## Features
 
 - **Dynamic adapter list** — discovers Ethernet, Wi-Fi, and other adapters automatically
-- **Per-adapter Enable/Disable** — control each adapter individually
-- **Quick switch presets**
-  - **Switch to Ethernet** — disables Wi-Fi, enables Ethernet
-  - **Switch to Wi-Fi** — disables Ethernet, enables Wi-Fi
-- **Standalone Windows app** — `Internet Toggle.exe` with custom icon (no PowerShell in taskbar)
-- **System tray** — live status summary, quick actions, hide-to-tray
-- **Settings panel** — launch at startup, start minimized to tray
-- **Tray-only startup by default** — no window flash on login; click tray icon to open
-- **No UAC prompts** after one-time admin install (uses a scheduled task)
-- **Single-instance app** — relaunching focuses the existing window
-- **Configurable** via `config.json` (adapter names, exclusions for virtual/Hyper-V adapters)
+- **Per-adapter toggle** — enable or disable any adapter individually
+- **Quick switch** — Switch to Ethernet / Switch to Wi-Fi presets
+- **Standalone Windows app** — `Internet Switcher Free.exe` with custom icon
+- **System tray** — live status, quick actions, hide-to-tray
+- **Settings** — launch at startup, start minimized to tray
+- **No UAC prompts** after one-time admin install
+- **Single-instance** — relaunching focuses existing window
+- **Privacy-first** — no telemetry, no ads ([PRIVACY.md](PRIVACY.md))
 
 ## Requirements
 
-- Windows 10 or 11
-- PowerShell 5.1 or later (install only)
-- Administrator rights for **install only** (not for daily use)
+- Windows 10 or 11 (64-bit)
+- PowerShell 5.1+ (install only)
+- Administrator rights for **install only**
 
 ## Download
 
-Get the latest release from [GitHub Releases](https://github.com/mdashfakfaysal/internet-toggle/releases):
+### GitHub Releases (recommended)
 
-1. Download the latest `internet-toggle-v*.zip`
-2. Extract anywhere on your PC
-3. Run **`scripts\Install-EthernetToggle.ps1`** once as Administrator
-4. Launch from **Start search** (`Internet Toggle`), the **taskbar pin**, or **`Internet Toggle.exe`**
+1. Download from [GitHub Releases](https://github.com/mdashfakfaysal/internet-toggle/releases)
+   - **Free:** `internet-switcher-free-x64-*.zip`
+   - **Pro:** `internet-switcher-pro-x64-*.zip`
+2. Verify SHA-256 checksum (`.sha256` file included)
+3. Extract and run `scripts\Install-EthernetToggle.ps1` as Administrator
 
-## Screenshots
+### Microsoft Store
 
-| Launcher | System tray |
-|----------|-------------|
-| ![Internet Toggle main window](assets/logo.png) | Tray icon with live Ethernet/Wi-Fi status summary |
+Coming soon — see [docs/MICROSOFT_STORE.md](docs/MICROSOFT_STORE.md)
 
-The main window shows adapter rows with status labels, quick-switch buttons, and a **Settings** button in the top-right header. On startup the app runs tray-only by default — left-click the tray icon to open the window.
+### Winget / Chocolatey
+
+Coming soon — placeholders for future package submissions.
 
 ## Quick Start
 
-1. Clone or download this repo.
-2. Run the **one-time install** (admin) — builds `Internet Toggle.exe` and registers shortcuts.
-3. Open the app and use **Switch to Wi-Fi** or **Switch to Ethernet**.
-
-## Install (one-time, admin)
-
 ```powershell
 cd path\to\internet-toggle
-.\scripts\Install-EthernetToggle.ps1
+.\scripts\Install-EthernetToggle.ps1   # Run as Administrator
 ```
 
-This will:
+Launch from Start search (**Internet Switcher**), taskbar pin, or `Internet Switcher Free.exe`.
 
-- Build **`Internet Toggle.exe`** (standalone app with your logo)
-- Register an elevated scheduled task for adapter changes
-- Add Start Menu, Startup, and taskbar shortcuts
-- Write default settings (`startMinimizedToTray: true`) so login starts tray-only
-- Remove legacy **Ethernet Toggle** / **Network Toggle** shortcuts
-- Start the app immediately (tray only by default)
-
-## Daily use
+## Usage
 
 | Action | How |
 |--------|-----|
-| Launch app | Start search **Internet Toggle**, taskbar pin, or **`Internet Toggle.exe`** |
-| Open window from tray | Left-click the tray icon |
-| Change startup behavior | Click **Settings** in the app header |
-| Switch to dorm hotspot | Click **Switch to Wi-Fi** |
-| Switch back to wired | Click **Switch to Ethernet** |
-| Toggle one adapter | Use **Enable** / **Disable** on its row |
-| Hide window | Close button minimizes to tray |
-| Exit completely | Right-click tray icon → **Exit** |
+| Switch to hotspot | Click **Switch to Wi-Fi** or press **Ctrl+Alt+W** |
+| Switch to wired | Click **Switch to Ethernet** |
+| Toggle one adapter | Click **Enable** / **Disable** on its row |
+| Open from tray | Left-click tray icon |
+| Settings | **Settings** button in header |
+| About / version | **About** button in header |
+| Exit | Right-click tray → **Exit** |
 
-### Settings
+## Administrator Privileges
 
-Open **Settings** (top-right of the main window) to control:
-
-- **Launch at Windows startup** — adds/removes the Startup folder shortcut immediately
-- **Start minimized to tray** — on launch, show only the tray icon (applies on next launch)
-
-Settings are saved to `%LOCALAPPDATA%\InternetToggle\settings.json`.
-
-Virtual adapters (e.g. Hyper-V `vEthernet`) are hidden by default. Edit `excludePatterns` in `config.json` to change this.
+Internet Switcher changes network adapter state, which Windows requires admin rights for. After the **one-time install**, a pre-registered scheduled task handles adapter changes **without repeated UAC prompts**. See [docs/PRIVILEGE_MODEL.md](docs/PRIVILEGE_MODEL.md).
 
 ## Configuration
 
-Edit `config.json`:
-
-```json
-{
-  "version": "1.4.0",
-  "appName": "Internet Toggle",
-  "exeName": "Internet Toggle",
-  "taskName": "ToggleInternetAdapter",
-  "ethernetAdapterName": "Ethernet",
-  "wifiAdapterName": "Wi-Fi",
-  "excludePatterns": ["vEthernet", "Hyper-V"],
-  "launchAtStartup": true,
-  "startMinimizedToTray": true
-}
-```
-
-Find your adapter names:
+Edit `config.json` for adapter names and exclusions. User settings live in `%LOCALAPPDATA%\InternetToggle\settings.json`.
 
 ```powershell
 Get-NetAdapter | Select-Object Name, Status, InterfaceDescription
 ```
 
-Re-run `Install-EthernetToggle.ps1` after changing `taskName`.
-
-## Uninstall
+## Build from Source
 
 ```powershell
-.\scripts\Uninstall-EthernetToggle.ps1
+# Free edition
+.\scripts\Build-Launcher.ps1 -Edition Free
+
+# Pro edition
+.\scripts\Build-Launcher.ps1 -Edition Pro
+
+# Full release packages + checksums
+.\scripts\Build-Release.ps1 -Version 1.0.0
+
+# Run tests
+.\tests\Run-Tests.ps1
 ```
 
-## Build a release package
+See [docs/BUILD.md](docs/BUILD.md) for details.
 
-```powershell
-.\scripts\Build-Release.ps1 -Version 1.4.0
-```
+## Troubleshooting
 
-Pushing a version tag (e.g. `v1.4.0`) triggers GitHub Actions to publish a release zip automatically.
+| Problem | Solution |
+|---------|----------|
+| Toggle does nothing | Re-run `Install-EthernetToggle.ps1` as admin |
+| Adapter not listed | Check name with `Get-NetAdapter`, update `config.json` |
+| UAC every toggle | Scheduled task missing — reinstall |
+| Wrong status label | Click refresh or restart app |
 
-## About this repo
+## FAQ
 
-**Internet Toggle** — Windows tray app to enable, disable, and switch Ethernet/Wi-Fi adapters. Formerly `ethernet-toggle-tray`; old GitHub URLs redirect automatically.
+**Does this make my internet faster?**  
+No. It switches between adapters — it does not speed up your connection.
+
+**Does it collect my data?**  
+No telemetry by default. See [PRIVACY.md](PRIVACY.md).
+
+**Can I use this commercially?**  
+The source is MIT-licensed. Internet Switcher Pro is the commercial edition.
+
+## Documentation
+
+| Doc | Description |
+|-----|-------------|
+| [TECHNICAL_AUDIT.md](docs/TECHNICAL_AUDIT.md) | Architecture audit |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |
+| [PRIVILEGE_MODEL.md](docs/PRIVILEGE_MODEL.md) | Admin/security model |
+| [BUILD.md](docs/BUILD.md) | Build instructions |
+| [RELEASE.md](docs/RELEASE.md) | Release process |
+| [MICROSOFT_STORE.md](docs/MICROSOFT_STORE.md) | Store submission checklist |
+
+## Contributing
+
+Issues and pull requests welcome at [github.com/mdashfakfaysal/internet-toggle](https://github.com/mdashfakfaysal/internet-toggle/issues).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Third-party notices in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Roadmap
+
+- [x] Free edition with tray + quick switch
+- [x] Free/Pro build configuration
+- [x] Edition feature gating architecture
+- [ ] Pro: network profiles
+- [ ] Pro: automatic failover
+- [ ] Windows installer (Inno Setup)
+- [ ] Microsoft Store submission
+- [ ] Winget package
+- [ ] Auto-update check

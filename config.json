@@ -1,7 +1,7 @@
 {
-  "version": "1.4.0",
-  "appName": "Internet Toggle",
-  "exeName": "Internet Toggle",
+  "version": "1.0.0",
+  "appName": "Internet Switcher",
+  "exeName": "Internet Switcher Free",
   "taskName": "ToggleInternetAdapter",
   "adapterName": "Ethernet",
   "ethernetAdapterName": "Ethernet",

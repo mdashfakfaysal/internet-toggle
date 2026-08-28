@@ -9,22 +9,42 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build-and-release:
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build release zip
+      - name: Build Free and Pro editions
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
           ./scripts/Build-Release.ps1 -Version $version
 
+      - name: Run tests
+        shell: pwsh
+        run: ./tests/Run-Tests.ps1
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.zip
+          files: |
+            dist/free/*.zip
+            dist/free/*.sha256
+            dist/pro/*.zip
+            dist/pro/*.sha256
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  quality-gates:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secret scan (basic)
+        shell: pwsh
+        run: |
+          $patterns = @('api[_-]?key', 'secret', 'password\s*=', 'BEGIN PRIVATE KEY')
+          $hits = Select-String -Path (Get-ChildItem -Recurse -Include *.cs,*.ps1,*.json,*.yml -Exclude node_modules) -Pattern ($patterns -join '|') -ErrorAction SilentlyContinue
+          if ($hits) { Write-Warning "Review potential secrets:`n$($hits -join '`n')" }

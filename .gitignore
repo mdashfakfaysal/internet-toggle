@@ -1,0 +1,13 @@
+# Windows
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# Local runtime state
+*.signal
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~

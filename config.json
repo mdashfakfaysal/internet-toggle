@@ -1,0 +1,5 @@
+{
+  "adapterName": "Ethernet",
+  "taskName": "ToggleEthernet",
+  "appName": "Ethernet Toggle"
+}

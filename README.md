@@ -2,8 +2,8 @@
 
 A tiny Windows utility to quickly enable, disable, or switch between your network adapters from a compact launcher window or system tray. Perfect when dorm wired internet misbehaves and you want to switch to a mobile hotspot over Wi-Fi.
 
-**Repository:** [github.com/mdashfakfaysal/ethernet-toggle-tray](https://github.com/mdashfakfaysal/ethernet-toggle-tray)  
-**Latest release:** [v1.4.0](https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/latest)
+**Repository:** [github.com/mdashfakfaysal/internet-toggle](https://github.com/mdashfakfaysal/internet-toggle)  
+**Latest release:** [v1.4.0](https://github.com/mdashfakfaysal/internet-toggle/releases/latest)
 
 ![Internet Toggle launcher](assets/logo.png)
 
@@ -30,9 +30,9 @@ A tiny Windows utility to quickly enable, disable, or switch between your networ
 
 ## Download
 
-Get the latest release from [GitHub Releases](https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases):
+Get the latest release from [GitHub Releases](https://github.com/mdashfakfaysal/internet-toggle/releases):
 
-1. Download the latest `ethernet-toggle-tray-v*.zip`
+1. Download the latest `internet-toggle-v*.zip`
 2. Extract anywhere on your PC
 3. Run **`scripts\Install-EthernetToggle.ps1`** once as Administrator
 4. Launch from **Start search** (`Internet Toggle`), the **taskbar pin**, or **`Internet Toggle.exe`**
@@ -54,7 +54,7 @@ The main window shows adapter rows with status labels, quick-switch buttons, and
 ## Install (one-time, admin)
 
 ```powershell
-cd path\to\ethernet-toggle-tray
+cd path\to\internet-toggle
 .\scripts\Install-EthernetToggle.ps1
 ```
 
@@ -133,7 +133,7 @@ Pushing a version tag (e.g. `v1.4.0`) triggers GitHub Actions to publish a relea
 
 ## About this repo
 
-The GitHub repo is named `ethernet-toggle-tray` for history; the app is **Internet Toggle**. Suggested topics: `windows`, `network`, `ethernet`, `wifi`, `system-tray`, `winforms`, `powershell`.
+**Internet Toggle** — Windows tray app to enable, disable, and switch Ethernet/Wi-Fi adapters. Formerly `ethernet-toggle-tray`; old GitHub URLs redirect automatically.
 
 ## License
 

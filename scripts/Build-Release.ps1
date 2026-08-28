@@ -8,8 +8,8 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $distDir = Join-Path $repoRoot 'dist'
-$stagingDir = Join-Path $distDir "ethernet-toggle-tray-v$Version"
-$zipPath = Join-Path $distDir "ethernet-toggle-tray-v$Version.zip"
+$stagingDir = Join-Path $distDir "internet-toggle-v$Version"
+$zipPath = Join-Path $distDir "internet-toggle-v$Version.zip"
 
 $buildLauncherScript = Join-Path $repoRoot 'scripts\Build-Launcher.ps1'
 & $buildLauncherScript

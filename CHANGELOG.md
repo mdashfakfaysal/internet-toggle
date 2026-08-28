@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Default startup behavior is tray-only** — no main window on login/startup
 - Install writes default settings (`launchAtStartup: true`, `startMinimizedToTray: true`)
+- GitHub repository renamed to [internet-toggle](https://github.com/mdashfakfaysal/internet-toggle); release zips now use `internet-toggle-v*.zip`
 
 ## [1.3.1] - 2026-08-28
 
@@ -100,10 +101,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows 10 or 11
 - PowerShell 5.1 or later
 
-[1.4.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.4.0
-[1.3.1]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.3.1
-[1.3.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.3.0
-[1.2.1]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.1
-[1.2.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.0
-[1.1.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.1.0
-[1.0.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.0.0
+[1.4.0]: https://github.com/mdashfakfaysal/internet-toggle/releases/tag/v1.4.0
+[1.3.1]: https://github.com/mdashfakfaysal/internet-toggle/releases/tag/v1.3.1
+[1.3.0]: https://github.com/mdashfakfaysal/internet-toggle/releases/tag/v1.3.0
+[1.2.1]: https://github.com/mdashfakfaysal/internet-toggle/releases/tag/v1.2.1
+[1.2.0]: https://github.com/mdashfakfaysal/internet-toggle/releases/tag/v1.2.0
+[1.1.0]: https://github.com/mdashfakfaysal/internet-toggle/releases/tag/v1.1.0
+[1.0.0]: https://github.com/mdashfakfaysal/internet-toggle/releases/tag/v1.0.0

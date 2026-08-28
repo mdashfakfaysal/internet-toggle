@@ -120,20 +120,20 @@ if (Test-Path -LiteralPath $paths.LogoPath) {
 
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Text = $config.appName
-$titleLabel.Font = New-Object System.Drawing.Font 'Segoe UI', 12, [System.Drawing.FontStyle]::Bold
+$titleLabel.Font = [System.Drawing.Font]::new('Segoe UI', 12, [System.Drawing.FontStyle]::Bold)
 $titleLabel.ForeColor = [System.Drawing.Color]::White
 $titleLabel.AutoSize = $true
 $titleLabel.Location = New-Object System.Drawing.Point 76, 16
 
 $adapterLabel = New-Object System.Windows.Forms.Label
 $adapterLabel.Text = "Adapter: $($config.adapterName)"
-$adapterLabel.Font = New-Object System.Drawing.Font 'Segoe UI', 9
+$adapterLabel.Font = [System.Drawing.Font]::new('Segoe UI', 9)
 $adapterLabel.ForeColor = [System.Drawing.Color]::FromArgb(170, 170, 170)
 $adapterLabel.AutoSize = $true
 $adapterLabel.Location = New-Object System.Drawing.Point 78, 42
 
 $statusLabel = New-Object System.Windows.Forms.Label
-$statusLabel.Font = New-Object System.Drawing.Font 'Segoe UI', 11, [System.Drawing.FontStyle]::Bold
+$statusLabel.Font = [System.Drawing.Font]::new('Segoe UI', 11, [System.Drawing.FontStyle]::Bold)
 $statusLabel.AutoSize = $true
 $statusLabel.Location = New-Object System.Drawing.Point 20, 88
 
@@ -143,7 +143,7 @@ $toggleButton.Location = New-Object System.Drawing.Point 20, 118
 $toggleButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $toggleButton.BackColor = [System.Drawing.Color]::FromArgb(70, 130, 220)
 $toggleButton.ForeColor = [System.Drawing.Color]::White
-$toggleButton.Font = New-Object System.Drawing.Font 'Segoe UI', 10, [System.Drawing.FontStyle]::Bold
+$toggleButton.Font = [System.Drawing.Font]::new('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
 $toggleButton.Cursor = [System.Windows.Forms.Cursors]::Hand
 $toggleButton.FlatAppearance.BorderSize = 0
 
@@ -158,7 +158,7 @@ $enableButton.Location = New-Object System.Drawing.Point 0, 0
 $enableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $enableButton.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 45)
 $enableButton.ForeColor = [System.Drawing.Color]::White
-$enableButton.Font = New-Object System.Drawing.Font 'Segoe UI', 9
+$enableButton.Font = [System.Drawing.Font]::new('Segoe UI', 9)
 $enableButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 
 $disableButton = New-Object System.Windows.Forms.Button
@@ -168,7 +168,7 @@ $disableButton.Location = New-Object System.Drawing.Point 152, 0
 $disableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $disableButton.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 45)
 $disableButton.ForeColor = [System.Drawing.Color]::White
-$disableButton.Font = New-Object System.Drawing.Font 'Segoe UI', 9
+$disableButton.Font = [System.Drawing.Font]::new('Segoe UI', 9)
 $disableButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 
 $notifyIcon = New-Object System.Windows.Forms.NotifyIcon

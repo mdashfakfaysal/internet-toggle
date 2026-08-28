@@ -10,43 +10,59 @@ $repoRoot = Split-Path -Parent $scriptRoot
 $paths = Get-EthernetTogglePaths -ScriptRoot $scriptRoot
 $config = Get-EthernetToggleConfig -ConfigPath $paths.ConfigPath
 
+$buildLauncherScript = Join-Path $scriptRoot 'Build-Launcher.ps1'
 $toggleScript = Join-Path $scriptRoot 'Toggle-Ethernet.ps1'
-$launchScript = Join-Path $scriptRoot 'Launch-EthernetToggle.ps1'
 $startupShortcutName = "$($config.appName).lnk"
 $startupFolder = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
 $startupShortcutPath = Join-Path $startupFolder $startupShortcutName
 $programsShortcutPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$startupShortcutName"
-$batPath = Join-Path $repoRoot 'Start Ethernet Toggle.bat'
+$taskbarShortcutPath = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\$startupShortcutName"
+$launcherExe = Join-Path $repoRoot "$($config.appName).exe"
 
-function New-Shortcut {
+function New-AppShortcut {
     param(
         [string]$ShortcutPath,
         [string]$TargetPath,
-        [string]$Arguments,
         [string]$WorkingDirectory,
         [string]$Description,
-        [string]$IconLocation = $null
+        [string]$IconLocation
     )
+
+    $shortcutDirectory = Split-Path -Parent $ShortcutPath
+    if (-not (Test-Path -LiteralPath $shortcutDirectory)) {
+        New-Item -ItemType Directory -Path $shortcutDirectory -Force | Out-Null
+    }
 
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($ShortcutPath)
     $shortcut.TargetPath = $TargetPath
-    $shortcut.Arguments = $Arguments
+    $shortcut.Arguments = ''
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.Description = $Description
     $shortcut.WindowStyle = 7
-    if ($IconLocation) {
-        $shortcut.IconLocation = $IconLocation
-    }
+    $shortcut.IconLocation = $IconLocation
     $shortcut.Save()
+}
+
+function Remove-LegacyShortcuts {
+    param([string[]]$ShortcutPaths)
+
+    foreach ($shortcutPath in $ShortcutPaths) {
+        if (Test-Path -LiteralPath $shortcutPath) {
+            Remove-Item -LiteralPath $shortcutPath -Force
+            Write-Host "Removed legacy shortcut: $shortcutPath"
+        }
+    }
 }
 
 if (-not (Test-Path -LiteralPath $toggleScript)) {
     throw "Missing script: $toggleScript"
 }
 
-if (-not (Test-Path -LiteralPath $launchScript)) {
-    throw "Missing script: $launchScript"
+& $buildLauncherScript
+
+if (-not (Test-Path -LiteralPath $launcherExe)) {
+    throw "Launcher executable was not created: $launcherExe"
 }
 
 $adapter = Get-NetAdapter -Name $config.adapterName -ErrorAction SilentlyContinue
@@ -69,34 +85,44 @@ Register-ScheduledTask `
     -Principal $principal `
     -Force | Out-Null
 
-$launchArguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launchScript`""
-$iconLocation = if (Test-Path -LiteralPath $paths.IconPath) { "$($paths.IconPath),0" } else { $null }
+$iconLocation = "$launcherExe,0"
+$shortcutDescription = "$($config.appName) - Ethernet adapter toggle"
 
-New-Shortcut `
+New-AppShortcut `
     -ShortcutPath $startupShortcutPath `
-    -TargetPath 'powershell.exe' `
-    -Arguments $launchArguments `
-    -WorkingDirectory $scriptRoot `
-    -Description "$($config.appName) launcher" `
+    -TargetPath $launcherExe `
+    -WorkingDirectory $repoRoot `
+    -Description $shortcutDescription `
     -IconLocation $iconLocation
 
-New-Shortcut `
+New-AppShortcut `
     -ShortcutPath $programsShortcutPath `
-    -TargetPath 'powershell.exe' `
-    -Arguments $launchArguments `
-    -WorkingDirectory $scriptRoot `
-    -Description "$($config.appName) launcher" `
+    -TargetPath $launcherExe `
+    -WorkingDirectory $repoRoot `
+    -Description $shortcutDescription `
     -IconLocation $iconLocation
+
+New-AppShortcut `
+    -ShortcutPath $taskbarShortcutPath `
+    -TargetPath $launcherExe `
+    -WorkingDirectory $repoRoot `
+    -Description $shortcutDescription `
+    -IconLocation $iconLocation
+
+Remove-LegacyShortcuts -ShortcutPaths @(
+    'C:\Users\Admin\Scripts\EthernetToggle\Ethernet Toggle.lnk'
+)
 
 Write-Host "$($config.appName) installed successfully."
 Write-Host ''
+Write-Host "App executable: $launcherExe"
 Write-Host "Scheduled task: $($config.taskName)"
 Write-Host "Startup shortcut: $startupShortcutPath"
 Write-Host "Start menu shortcut: $programsShortcutPath"
-Write-Host "Quick launch: $batPath"
+Write-Host "Taskbar shortcut: $taskbarShortcutPath"
 Write-Host ''
 Write-Host 'Starting the app now...'
 
-Start-Process -FilePath 'powershell.exe' -ArgumentList $launchArguments -WorkingDirectory $scriptRoot -WindowStyle Hidden
+Start-Process -FilePath $launcherExe -WorkingDirectory $repoRoot -WindowStyle Hidden
 
-Write-Host 'Look for the tray icon near the clock, or double-click "Start Ethernet Toggle.bat".'
+Write-Host 'Search for "Ethernet Toggle" in Start, or use the pinned taskbar icon.'

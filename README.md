@@ -23,18 +23,20 @@ A tiny Windows utility to quickly enable or disable your Ethernet adapter from t
 
 Get the latest release from [GitHub Releases](https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases):
 
-1. Download `ethernet-toggle-tray-v1.0.0.zip`
+1. Download the latest `ethernet-toggle-tray-v*.zip`
 2. Extract anywhere on your PC
-3. Double-click **`Start Ethernet Toggle.bat`**
+3. Run **`scripts\Install-EthernetToggle.ps1`** once as Administrator (builds `Ethernet Toggle.exe` and registers shortcuts)
+4. Launch from **Start search**, the **taskbar pin**, or double-click **`Ethernet Toggle.exe`**
 
-For silent toggles without UAC each time, run the one-time install (below) first.
+For silent toggles without UAC each time, the one-time install (below) is required.
 
 ## Quick Start
 
 1. Clone or download this repo.
-2. **Double-click** `Start Ethernet Toggle.bat` to launch the app.
+2. Run the **one-time install** (admin) — this builds `Ethernet Toggle.exe` and adds Start/taskbar shortcuts.
+3. Search **Ethernet Toggle** in Start or click the pinned taskbar icon.
 
-For silent toggles without UAC each time, run the one-time install (step below) first.
+You can also double-click **`Start Ethernet Toggle.bat`** or **`Ethernet Toggle.exe`** directly.
 
 ## Install (one-time, admin)
 
@@ -47,19 +49,22 @@ cd path\to\ethernet-toggle-tray
 
 This will:
 
+- Build **`Ethernet Toggle.exe`** with the custom app icon
 - Register an elevated scheduled task for adapter changes
-- Add a startup shortcut so the app launches at logon
-- Start the tray app immediately
+- Add Start Menu, Startup, and taskbar shortcuts (with logo — not PowerShell)
+- Start the app immediately
+
+After install, **Ethernet Toggle** appears in Windows search with its own icon. Pin it to the taskbar if it is not already pinned.
 
 ## Daily use
 
 | Action | How |
 |--------|-----|
-| Launch app | Double-click `Start Ethernet Toggle.bat` |
+| Launch app | Start search **Ethernet Toggle**, taskbar pin, or double-click **`Ethernet Toggle.exe`** |
 | Toggle Ethernet | Left-click tray icon, or use the big button in the window |
 | Enable / Disable | Buttons in the window, or right-click tray icon |
 | Hide window | Close button minimizes to tray |
-| Exit completely | Right-click tray icon → **Exit** |
+| Exit completely | Right-click tray icon → **Exit**, then relaunch from Start or taskbar |
 
 The tray icon lives near the clock (bottom-right). If hidden, click the `^` arrow in the taskbar to reveal it.
 
@@ -95,12 +100,16 @@ Re-run `Install-EthernetToggle.ps1` after changing `taskName` or paths.
 ethernet-toggle-tray/
 ├── assets/
 │   ├── logo.png          # App logo (256x256)
-│   └── icon.ico          # Tray/window icon
+│   └── icon.ico          # Tray/window/launcher icon
+├── launcher/
+│   └── EthernetToggleLauncher.cs
+├── Ethernet Toggle.exe   # Built by Install / Build-Launcher (not in git)
 ├── config.json           # Adapter name and app settings
 ├── scripts/
 │   ├── EthernetToggle.Common.ps1
 │   ├── Ethernet-Launcher.ps1   # Main UI + tray app
 │   ├── Launch-EthernetToggle.ps1
+│   ├── Build-Launcher.ps1      # Compiles Ethernet Toggle.exe
 │   ├── Toggle-Ethernet.ps1     # Elevated toggle logic
 │   ├── Install-EthernetToggle.ps1
 │   ├── Uninstall-EthernetToggle.ps1

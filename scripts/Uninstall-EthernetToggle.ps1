@@ -10,6 +10,7 @@ $config = Get-EthernetToggleConfig -ConfigPath $paths.ConfigPath
 
 $startupShortcutPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\$($config.appName).lnk"
 $programsShortcutPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$($config.appName).lnk"
+$taskbarShortcutPath = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\$($config.appName).lnk"
 
 $existingTask = Get-ScheduledTask -TaskName $config.taskName -ErrorAction SilentlyContinue
 if ($existingTask) {
@@ -20,7 +21,7 @@ else {
     Write-Host "Scheduled task not found: $($config.taskName)"
 }
 
-foreach ($shortcutPath in @($startupShortcutPath, $programsShortcutPath)) {
+foreach ($shortcutPath in @($startupShortcutPath, $programsShortcutPath, $taskbarShortcutPath)) {
     if (Test-Path -LiteralPath $shortcutPath) {
         Remove-Item -LiteralPath $shortcutPath -Force
         Write-Host "Removed shortcut: $shortcutPath"

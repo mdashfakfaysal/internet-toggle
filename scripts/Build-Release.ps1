@@ -11,10 +11,15 @@ $distDir = Join-Path $repoRoot 'dist'
 $stagingDir = Join-Path $distDir "ethernet-toggle-tray-v$Version"
 $zipPath = Join-Path $distDir "ethernet-toggle-tray-v$Version.zip"
 
+$buildLauncherScript = Join-Path $repoRoot 'scripts\Build-Launcher.ps1'
+& $buildLauncherScript
+
 $includePaths = @(
     'assets',
+    'launcher',
     'scripts',
     'config.json',
+    'Ethernet Toggle.exe',
     'Start Ethernet Toggle.bat',
     'README.md',
     'CHANGELOG.md',

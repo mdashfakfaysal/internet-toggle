@@ -2,6 +2,7 @@
 dist/
 Desktop.ini
 *.lnk
+Ethernet Toggle.exe
 
 # Local runtime state
 *.signal

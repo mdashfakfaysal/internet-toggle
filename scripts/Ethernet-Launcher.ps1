@@ -92,9 +92,9 @@ function Invoke-UiEthernetAction {
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = $config.appName
-$form.Size = New-Object System.Drawing.Size 340, 220
-$form.MinimumSize = New-Object System.Drawing.Size 340, 220
-$form.MaximumSize = New-Object System.Drawing.Size 340, 220
+$form.Size = New-Object System.Drawing.Size 360, 300
+$form.MinimumSize = New-Object System.Drawing.Size 360, 300
+$form.MaximumSize = New-Object System.Drawing.Size 360, 300
 $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 $form.MaximizeBox = $false
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
@@ -138,8 +138,8 @@ $statusLabel.AutoSize = $true
 $statusLabel.Location = New-Object System.Drawing.Point 20, 88
 
 $toggleButton = New-Object System.Windows.Forms.Button
-$toggleButton.Size = New-Object System.Drawing.Size 292, 36
-$toggleButton.Location = New-Object System.Drawing.Point 20, 118
+$toggleButton.Size = New-Object System.Drawing.Size 320, 40
+$toggleButton.Location = New-Object System.Drawing.Point 20, 108
 $toggleButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $toggleButton.BackColor = [System.Drawing.Color]::FromArgb(70, 130, 220)
 $toggleButton.ForeColor = [System.Drawing.Color]::White
@@ -148,12 +148,12 @@ $toggleButton.Cursor = [System.Windows.Forms.Cursors]::Hand
 $toggleButton.FlatAppearance.BorderSize = 0
 
 $buttonPanel = New-Object System.Windows.Forms.Panel
-$buttonPanel.Location = New-Object System.Drawing.Point 20, 162
-$buttonPanel.Size = New-Object System.Drawing.Size 292, 32
+$buttonPanel.Location = New-Object System.Drawing.Point 20, 158
+$buttonPanel.Size = New-Object System.Drawing.Size 320, 34
 
 $enableButton = New-Object System.Windows.Forms.Button
 $enableButton.Text = 'Enable'
-$enableButton.Size = New-Object System.Drawing.Size 140, 32
+$enableButton.Size = New-Object System.Drawing.Size 154, 34
 $enableButton.Location = New-Object System.Drawing.Point 0, 0
 $enableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $enableButton.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 45)
@@ -163,8 +163,8 @@ $enableButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(70, 
 
 $disableButton = New-Object System.Windows.Forms.Button
 $disableButton.Text = 'Disable'
-$disableButton.Size = New-Object System.Drawing.Size 140, 32
-$disableButton.Location = New-Object System.Drawing.Point 152, 0
+$disableButton.Size = New-Object System.Drawing.Size 154, 34
+$disableButton.Location = New-Object System.Drawing.Point 166, 0
 $disableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $disableButton.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 45)
 $disableButton.ForeColor = [System.Drawing.Color]::White

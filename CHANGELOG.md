@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-08-28
+
+### Fixed
+
+- Crash on launch (`ArgumentOutOfRangeException` in `Icon.BmpFrame`) caused by PNG-compressed `icon.ico`
+- Tray icon now drawn programmatically from `logo.png` with green/gray fallback circle
+- Regenerated `assets/icon.ico` as valid BMP-based multi-size ICO for shortcuts and the `.exe`
+
+## [1.2.0] - 2026-08-28
+
+### Changed
+
+- **`Ethernet Toggle.exe` is now a full standalone WinForms app** — no PowerShell process in the taskbar
+- Fixed launcher window layout: taller window, proper padding, all labels and buttons visible
+- Tray icon and UI run entirely inside the `.exe` with your custom logo
+
 ## [1.1.0] - 2026-08-28
 
 ### Added
@@ -36,5 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows 10 or 11
 - PowerShell 5.1 or later
 
+[1.2.1]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.1
+[1.2.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.1.0
 [1.0.0]: https://github.com/mdashfakfaysal/ethernet-toggle-tray/releases/tag/v1.0.0

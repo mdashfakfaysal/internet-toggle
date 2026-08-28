@@ -30,8 +30,9 @@ foreach ($shortcutPath in @($startupShortcutPath, $programsShortcutPath, $taskba
 
 Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object {
-        $_.Name -in @('powershell.exe', 'pwsh.exe') -and
-        ($_.CommandLine -like '*Ethernet-Launcher.ps1*' -or $_.CommandLine -like '*Launch-EthernetToggle.ps1*')
+        ($_.Name -eq 'Ethernet Toggle.exe') -or
+        ($_.Name -in @('powershell.exe', 'pwsh.exe') -and
+            ($_.CommandLine -like '*Ethernet-Launcher.ps1*' -or $_.CommandLine -like '*Launch-EthernetToggle.ps1*'))
     } |
     ForEach-Object {
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue

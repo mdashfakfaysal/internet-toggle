@@ -53,6 +53,19 @@ function New-LogoBitmap {
     return $bitmap
 }
 
+function Get-IconDibBytes {
+    param([System.Drawing.Bitmap]$Bitmap)
+
+    $memoryStream = New-Object System.IO.MemoryStream
+    $Bitmap.Save($memoryStream, [System.Drawing.Imaging.ImageFormat]::Bmp)
+    $bmpBytes = $memoryStream.ToArray()
+    $memoryStream.Dispose()
+
+    $dibBytes = New-Object byte[] ($bmpBytes.Length - 14)
+    [Array]::Copy($bmpBytes, 14, $dibBytes, 0, $dibBytes.Length)
+    return $dibBytes
+}
+
 function Save-IconFromBitmap {
     param(
         [System.Drawing.Bitmap]$SourceBitmap,
@@ -76,13 +89,9 @@ function Save-IconFromBitmap {
         $resGraphics.DrawImage($SourceBitmap, 0, 0, $size, $size)
         $resGraphics.Dispose()
 
-        $pngStream = New-Object System.IO.MemoryStream
-        $resized.Save($pngStream, [System.Drawing.Imaging.ImageFormat]::Png)
-        $pngBytes = $pngStream.ToArray()
-        $pngStream.Dispose()
+        $dibBytes = Get-IconDibBytes -Bitmap $resized
         $resized.Dispose()
-
-        $imageData.Add($pngBytes) | Out-Null
+        $imageData.Add($dibBytes) | Out-Null
 
         $writer.Write([Byte]($size -band 0xFF))
         $writer.Write([Byte](($size -shr 8) -band 0xFF))
@@ -90,7 +99,7 @@ function Save-IconFromBitmap {
         $writer.Write([Byte]0)
         $writer.Write([UInt16]1)
         $writer.Write([UInt16]32)
-        $writer.Write([UInt32]$pngBytes.Length)
+        $writer.Write([UInt32]$dibBytes.Length)
         $writer.Write([UInt32]0)
     }
 

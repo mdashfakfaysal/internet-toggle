@@ -1,6 +1,11 @@
 #Requires -RunAsAdministrator
 #Requires -Version 5.1
 
+param(
+    [ValidateSet('Free', 'Pro', 'Legacy')]
+    [string]$Edition = 'Free'
+)
+
 $ErrorActionPreference = 'Stop'
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -17,7 +22,10 @@ $startupFolder = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\S
 $startupShortcutPath = Join-Path $startupFolder $startupShortcutName
 $programsShortcutPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$startupShortcutName"
 $taskbarShortcutPath = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\$startupShortcutName"
-$launcherExe = Join-Path $repoRoot 'Internet Switcher Free.exe'
+$launcherExe = switch ($Edition) {
+    'Pro' { Join-Path $repoRoot 'Internet Switcher Pro.exe' }
+    default { Join-Path $repoRoot 'Internet Switcher Free.exe' }
+}
 $legacyExe = Join-Path $repoRoot 'Internet Toggle.exe'
 
 function New-AppShortcut {
@@ -61,7 +69,7 @@ if (-not (Test-Path -LiteralPath $toggleScript)) {
 }
 
 & (Join-Path $scriptRoot 'New-EthernetToggleAssets.ps1')
-& $buildLauncherScript -Edition Free
+& $buildLauncherScript -Edition $Edition
 
 if (-not (Test-Path -LiteralPath $launcherExe)) {
     throw "Launcher executable was not created: $launcherExe"

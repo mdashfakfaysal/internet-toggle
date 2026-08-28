@@ -20,11 +20,14 @@
 | Adapter status display | Yes | Yes |
 | System tray + startup | Yes | Yes |
 | Basic hotkey (Ctrl+Alt+W) | Yes | Yes |
-| Multiple network profiles | — | Yes |
-| Automatic failover | — | Yes |
-| Schedules & rules | — | Yes |
-| Connection history | — | Yes |
-| Import / export config | — | Yes |
+| Multiple network profiles | — | **Yes** |
+| Automatic failover | — | **Yes** |
+| Per-adapter rules | — | **Yes** |
+| Advanced configurable hotkeys | — | **Yes** |
+| Daily schedules | — | **Yes** |
+| Connection history | — | **Yes** |
+| Import / export config | — | **Yes** |
+| Tray profile quick-apply | — | **Yes** |
 
 ## Features
 
@@ -104,8 +107,11 @@ Get-NetAdapter | Select-Object Name, Status, InterfaceDescription
 # Pro edition
 .\scripts\Build-Launcher.ps1 -Edition Pro
 
+# Install Pro (run as Administrator)
+.\scripts\Install-EthernetToggle.ps1 -Edition Pro
+
 # Full release packages + checksums
-.\scripts\Build-Release.ps1 -Version 1.0.0
+.\scripts\Build-Release.ps1 -Version 1.1.0
 
 # Run tests
 .\tests\Run-Tests.ps1
@@ -157,8 +163,9 @@ MIT — see [LICENSE](LICENSE). Third-party notices in [THIRD_PARTY_NOTICES.md](
 - [x] Free edition with tray + quick switch
 - [x] Free/Pro build configuration
 - [x] Edition feature gating architecture
-- [ ] Pro: network profiles
-- [ ] Pro: automatic failover
+- [x] Pro: network profiles
+- [x] Pro: automatic failover
+- [x] Pro: advanced hotkeys, schedules, rules, history, import/export
 - [ ] Windows installer (Inno Setup)
 - [ ] Microsoft Store submission
 - [ ] Winget package

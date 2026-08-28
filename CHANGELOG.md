@@ -5,6 +5,24 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-28
+
+### Added — Internet Switcher Pro features
+
+- Network profiles with save/apply/delete and tray quick-apply menu
+- Automatic failover when Ethernet or Wi-Fi disconnects
+- Per-adapter rules (disable Wi-Fi when Ethernet connected, and reverse)
+- Advanced configurable hotkeys (switch, toggle, apply profile 1/2)
+- Daily schedules for switch or profile actions
+- Connection history log (local JSON)
+- Import/export of profiles, automation settings, and preferences
+- Pro Settings tabbed UI and Profiles manager
+
+### Changed
+
+- Pro build enables Pro features by default via `ProLicenseProvider`
+- Install script supports `-Edition Pro`
+
 ## [1.0.0] - 2026-08-28
 
 ### Added — Commercial Release

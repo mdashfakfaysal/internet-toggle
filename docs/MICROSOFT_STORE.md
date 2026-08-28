@@ -57,7 +57,7 @@ dist/store/InternetSwitcher-Free-Store-x64-1-0-0-0.msix.sha256
 2. Navigate to **Packages** → create or update submission
 3. Upload `InternetSwitcher-Free-Store-x64-*.msix`
 4. Partner Center re-signs with your Store identity certificate
-5. Complete Store listing (see `store-assets/store-listing.md`)
+5. Complete Store listing (see `store-assets/store-listing.md` and **`docs/PARTNER_CENTER_SUBMISSION.md`**)
 6. Submit for certification
 
 ## Remaining Placeholders

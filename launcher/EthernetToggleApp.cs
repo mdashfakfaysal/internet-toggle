@@ -181,6 +181,12 @@ namespace EthernetToggle
         public bool IsVirtual { get; set; }
         public string ConnectionState { get; set; }
         public string StatusText { get; set; }
+        public string LinkStatus { get; set; }
+
+        public bool IsPresent
+        {
+            get { return !string.Equals(LinkStatus, "Not Present", StringComparison.OrdinalIgnoreCase); }
+        }
     }
 
     internal static class NativeMethods
@@ -196,6 +202,7 @@ namespace EthernetToggle
             public int MediaConnectState { get; set; }
             public string InterfaceDescription { get; set; }
             public bool Virtual { get; set; }
+            public int OperationalStatus { get; set; }
         }
 
         public static IList<NetworkAdapterInfo> GetAdapters(AppConfig config, bool includeVirtual)
@@ -236,6 +243,7 @@ namespace EthernetToggle
                         var mediaConnectState = msft != null ? msft.MediaConnectState : 0;
                         var connection = MapMediaConnectionState(enabled, mediaConnectState, netConnectionStatus);
                         var isConnected = enabled && connection == "Connected";
+                        var linkStatus = msft != null ? MapLinkStatus(msft.OperationalStatus, enabled) : (enabled ? "Up" : "Disabled");
 
                         results.Add(new NetworkAdapterInfo
                         {
@@ -245,7 +253,8 @@ namespace EthernetToggle
                             IsConnected = isConnected,
                             IsVirtual = isVirtual,
                             ConnectionState = connection,
-                            StatusText = BuildStatusText(enabled, connection, isVirtual)
+                            LinkStatus = linkStatus,
+                            StatusText = BuildStatusText(enabled, connection, isVirtual, linkStatus)
                         });
                     }
                 }
@@ -265,7 +274,7 @@ namespace EthernetToggle
             {
                 var scope = new System.Management.ManagementScope(@"\\.\root\StandardCimv2");
                 var query = new System.Management.ObjectQuery(
-                    "SELECT Name, MediaConnectState, InterfaceDescription, Virtual FROM MSFT_NetAdapter");
+                    "SELECT Name, MediaConnectState, InterfaceDescription, Virtual, OperationalStatus FROM MSFT_NetAdapter");
 
                 using (var searcher = new System.Management.ManagementObjectSearcher(scope, query))
                 {
@@ -281,7 +290,8 @@ namespace EthernetToggle
                         {
                             MediaConnectState = obj["MediaConnectState"] != null ? Convert.ToInt32(obj["MediaConnectState"]) : 0,
                             InterfaceDescription = Convert.ToString(obj["InterfaceDescription"]) ?? string.Empty,
-                            Virtual = obj["Virtual"] is bool && (bool)obj["Virtual"]
+                            Virtual = obj["Virtual"] is bool && (bool)obj["Virtual"],
+                            OperationalStatus = obj["OperationalStatus"] != null ? Convert.ToInt32(obj["OperationalStatus"]) : 0
                         };
                     }
                 }
@@ -355,8 +365,28 @@ namespace EthernetToggle
             }
         }
 
-        private static string BuildStatusText(bool enabled, string connection, bool isVirtual)
+        private static string MapLinkStatus(int operationalStatus, bool enabled)
         {
+            switch (operationalStatus)
+            {
+                case 1:
+                    return "Up";
+                case 2:
+                    return enabled ? "Up" : "Disabled";
+                case 4:
+                    return "Not Present";
+                default:
+                    return enabled ? "Up" : "Disabled";
+            }
+        }
+
+        private static string BuildStatusText(bool enabled, string connection, bool isVirtual, string linkStatus)
+        {
+            if (string.Equals(linkStatus, "Not Present", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Not Present";
+            }
+
             if (!enabled)
             {
                 return isVirtual ? "Disabled · Virtual" : "Disabled";
@@ -1091,6 +1121,11 @@ namespace EthernetToggle
             if (adapter == null)
             {
                 return "n/a";
+            }
+
+            if (!adapter.IsPresent)
+            {
+                return "Not Present";
             }
 
             if (!adapter.IsEnabled)

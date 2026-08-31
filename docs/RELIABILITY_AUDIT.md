@@ -162,3 +162,47 @@ If adapter truly missing from Device Manager (not just disabled), user must:
 - Or reboot — outside app control
 
 Document `netsh interface set interface name="Wi-Fi" admin=ENABLED` as manual fallback in troubleshooting docs.
+
+---
+
+## RC-10 — "Not Present" adapters and stranded connectivity (CRITICAL, v1.0.3)
+
+**Date observed:** 2026-08-31 on user PC (MediaTek MT7925)
+
+### Symptoms
+
+- `Get-NetAdapter` shows Wi-Fi `Status = Not Present` (not merely Disabled)
+- Multiple ghost entries: `Wi-Fi`, `Wi-Fi 2`, `Wi-Fi 3`, `Wi-Fi 4`, `Wi-Fi 5` — same `InterfaceDescription`
+- `Enable-NetAdapter` fails after 3 retries; reliability log: `Fail Enable Wi-Fi failed after 3 attempts`
+- Switch operation disables Ethernet first → user left **offline** with no working adapter
+- PnP device state: `Status=Error`, `ConfigManagerErrorCode=CM_PROB_FAILED_START` (driver failed to start)
+- `netsh wlan show interfaces`: "There is no wireless interface on the system"
+- WlanSvc running — radio/service is not the blocker; **device/driver layer failure**
+
+### Root cause chain
+
+1. Power outage or repeated disable/enable cycles leave stale network profile registry entries (ghost adapters)
+2. Physical PnP device enters error state (`CM_PROB_FAILED_START`) — adapter layer shows "Not Present"
+3. v1.0.1 retry logic blindly calls `Enable-NetAdapter` 3× on Not Present adapters (always fails)
+4. Switch disables source adapter (Ethernet) before enable target fails → **no rollback** → user stranded offline
+
+### Fixes implemented (v1.0.3)
+
+| ID | Fix |
+|----|-----|
+| F10 | **Not Present detection** — skip blind `Enable-NetAdapter` retries when `Status = Not Present` |
+| F11 | **PnP recovery** — `Enable-PnpDevice`, disable/enable cycle, `pnputil /restart-device` via elevated task |
+| F12 | **Ghost adapter filtering** — prefer present adapters; deprioritize `Wi-Fi N` ghost profiles in C# + PS |
+| F13 | **Switch rollback** — if enable target fails, re-enable adapters that were disabled during switch |
+| F14 | **Actionable errors** — toast: "Could not enable Wi-Fi… Ethernet restored" + driver/hardware guidance |
+
+### Manual recovery when PnP recovery fails
+
+If device remains `CM_PROB_FAILED_START` after app recovery:
+
+1. Device Manager → Network adapters → MediaTek Wi-Fi 7 → Uninstall device (keep driver) → Action → Scan for hardware changes
+2. Reinstall MediaTek Wi-Fi 7 driver from OEM/Lenovo support
+3. Reboot — often required after power-loss driver corruption
+4. Check hardware Wi-Fi switch / airplane mode (Fn key)
+
+**Important:** App rollback ensures Ethernet is restored if Wi-Fi cannot be enabled — user should not remain offline after a failed switch.

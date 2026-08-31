@@ -336,20 +336,136 @@ function Get-PhysicalNetAdapters {
     return $adapters
 }
 
+function Get-AdapterPresenceScore {
+    param($Adapter)
+    switch ([string]$Adapter.Status) {
+        'Up' { return 0 }
+        'Disabled' { return 1 }
+        'Disconnected' { return 2 }
+        default { return 10 }
+    }
+}
+
+function Get-AdapterGhostNameScore {
+    param([string]$Name)
+    if ($Name -eq 'Wi-Fi') { return 0 }
+    if ($Name -match '^Wi-Fi\s+\d+$') { return 2 }
+    return 1
+}
+
+function Sort-AdaptersByPreference {
+    param($Adapters)
+    return @($Adapters | Sort-Object { Get-AdapterPresenceScore $_ }, { Get-AdapterGhostNameScore $_.Name }, Name)
+}
+
+function Find-BestNetAdapterByDescription {
+    param(
+        [string]$InterfaceDescription,
+        [string]$NameHint = $null
+    )
+
+    if ([string]::IsNullOrWhiteSpace($InterfaceDescription)) {
+        return $null
+    }
+
+    $candidates = @(Get-PhysicalNetAdapters | Where-Object { $_.InterfaceDescription -eq $InterfaceDescription })
+    if ($candidates.Count -eq 0) {
+        return $null
+    }
+
+    if ($NameHint) {
+        $hintMatch = $candidates | Where-Object { $_.Name -eq $NameHint -and $_.Status -ne 'Not Present' } | Select-Object -First 1
+        if ($hintMatch) {
+            return $hintMatch
+        }
+    }
+
+    return (Sort-AdaptersByPreference $candidates | Select-Object -First 1)
+}
+
+function Get-PnpDeviceForNetAdapter {
+    param([string]$InterfaceDescription)
+
+    if ([string]::IsNullOrWhiteSpace($InterfaceDescription)) {
+        return $null
+    }
+
+    return Get-PnpDevice -Class Net -ErrorAction SilentlyContinue |
+        Where-Object { $_.FriendlyName -eq $InterfaceDescription } |
+        Sort-Object { if ($_.Status -eq 'OK') { 0 } else { 1 } }, InstanceId |
+        Select-Object -First 1
+}
+
+function Invoke-PnpNetDeviceRecovery {
+    param([string]$InterfaceDescription)
+
+    $device = Get-PnpDeviceForNetAdapter -InterfaceDescription $InterfaceDescription
+    if (-not $device) {
+        Write-ReliabilityLog 'PnP' "No PnP device found for $InterfaceDescription"
+        return $false
+    }
+
+    $problem = if ($null -ne $device.ConfigManagerErrorCode) { [string]$device.ConfigManagerErrorCode } else { 'none' }
+    Write-ReliabilityLog 'PnP' "Device $($device.InstanceId) status=$($device.Status) problem=$problem"
+
+    if ($device.Status -eq 'OK') {
+        return $true
+    }
+
+    $steps = @(
+        { Enable-PnpDevice -InstanceId $device.InstanceId -Confirm:$false -ErrorAction Stop },
+        {
+            Disable-PnpDevice -InstanceId $device.InstanceId -Confirm:$false -ErrorAction Stop
+            Start-Sleep -Seconds 1
+            Enable-PnpDevice -InstanceId $device.InstanceId -Confirm:$false -ErrorAction Stop
+        },
+        { pnputil.exe /restart-device $device.InstanceId 2>&1 | Out-Null }
+    )
+
+    foreach ($step in $steps) {
+        try {
+            & $step
+            Start-Sleep -Seconds 3
+            $device = Get-PnpDevice -InstanceId $device.InstanceId -ErrorAction SilentlyContinue
+            if ($device -and $device.Status -eq 'OK') {
+                Write-ReliabilityLog 'PnP' 'Device recovery succeeded'
+                return $true
+            }
+        }
+        catch {
+            Write-ReliabilityLog 'PnP' "Recovery step failed: $($_.Exception.Message)"
+        }
+    }
+
+    Write-ReliabilityLog 'PnP' 'Device recovery failed - adapter may need driver reinstall or reboot'
+    return $false
+}
+
+function Get-NotPresentUserMessage {
+    param([string]$AdapterName)
+
+    $adapter = Get-NetAdapter -Name $AdapterName -ErrorAction SilentlyContinue
+    $desc = if ($adapter) { [string]$adapter.InterfaceDescription } else { [string]$AdapterName }
+
+    if ($desc -match 'MediaTek') {
+        return 'Wi-Fi adapter is not present. Check hardware Wi-Fi switch / airplane mode, or reinstall the MediaTek Wi-Fi 7 driver.'
+    }
+
+    return "Wi-Fi adapter is not present. Check airplane mode, hardware radio switch, or reinstall the wireless driver."
+}
+
 function Resolve-PreferredAdapters {
     param($Config)
     $physical = Get-PhysicalNetAdapters -ExcludePatterns $Config.excludePatterns
-    $wifi = $physical | Where-Object { $_.Name -eq $Config.wifiAdapterName } | Select-Object -First 1
-    $eth = $physical | Where-Object { $_.Name -eq $Config.ethernetAdapterName } | Select-Object -First 1
 
-    if (-not $wifi) {
-        $wifi = $physical | Where-Object { Test-AdapterIsWiFi $_.Name $_.InterfaceDescription } |
-            Sort-Object { if ($_.Status -eq 'Up') { 0 } else { 1 } }, Name | Select-Object -First 1
-    }
-    if (-not $eth) {
-        $eth = $physical | Where-Object { Test-AdapterIsEthernet $_.Name $_.InterfaceDescription } |
-            Sort-Object { if ($_.Status -eq 'Up') { 0 } else { 1 } }, Name | Select-Object -First 1
-    }
+    $wifiCandidates = @($physical | Where-Object { Test-AdapterIsWiFi $_.Name $_.InterfaceDescription })
+    $ethCandidates = @($physical | Where-Object { Test-AdapterIsEthernet $_.Name $_.InterfaceDescription })
+
+    $wifiHint = $physical | Where-Object { $_.Name -eq $Config.wifiAdapterName -and $_.Status -ne 'Not Present' } | Select-Object -First 1
+    $ethHint = $physical | Where-Object { $_.Name -eq $Config.ethernetAdapterName -and $_.Status -ne 'Not Present' } | Select-Object -First 1
+
+    $wifi = if ($wifiHint) { $wifiHint } else { Sort-AdaptersByPreference $wifiCandidates | Select-Object -First 1 }
+    $eth = if ($ethHint) { $ethHint } else { Sort-AdaptersByPreference $ethCandidates | Select-Object -First 1 }
 
     return [PSCustomObject]@{
         WiFi     = $wifi
@@ -368,11 +484,45 @@ function Set-AdapterStateReliable {
 
     Assert-ValidAdapterName -Name $Name
 
-    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+    $adapter = Get-NetAdapter -Name $Name -ErrorAction SilentlyContinue
+    if (-not $adapter) {
+        Write-ReliabilityLog 'Fail' "$DesiredState $Name failed: adapter not found"
+        return $false
+    }
+
+    $pnpRecovered = $false
+    if ($DesiredState -eq 'Enable' -and [string]$adapter.Status -eq 'Not Present') {
+        Write-ReliabilityLog 'NotPresent' "$Name is Not Present - attempting PnP recovery for $($adapter.InterfaceDescription)"
+        if (-not (Invoke-PnpNetDeviceRecovery -InterfaceDescription $adapter.InterfaceDescription)) {
+            Write-ReliabilityLog 'Fail' "Enable $Name failed: Not Present and PnP recovery failed"
+            return $false
+        }
+        $pnpRecovered = $true
+        Start-Sleep -Seconds 2
+        $resolved = Find-BestNetAdapterByDescription -InterfaceDescription $adapter.InterfaceDescription -NameHint $Name
+        if ($resolved) {
+            $Name = [string]$resolved.Name
+            $adapter = $resolved
+            Write-ReliabilityLog 'PnP' "Resolved adapter after recovery: $Name status=$($adapter.Status)"
+        }
+        if (-not $adapter -or [string]$adapter.Status -eq 'Not Present') {
+            Write-ReliabilityLog 'Fail' "Enable failed: adapter still Not Present after PnP recovery"
+            return $false
+        }
+    }
+
+    $attempts = if ($pnpRecovered) { 2 } else { $MaxAttempts }
+
+    for ($attempt = 1; $attempt -le $attempts; $attempt++) {
         $adapter = Get-NetAdapter -Name $Name -ErrorAction SilentlyContinue
         if (-not $adapter) {
-            Start-Sleep -Milliseconds 400
-            continue
+            Write-ReliabilityLog 'Fail' "$DesiredState $Name failed: adapter not found"
+            return $false
+        }
+
+        if ($DesiredState -eq 'Enable' -and [string]$adapter.Status -eq 'Not Present') {
+            Write-ReliabilityLog 'Fail' "Enable $Name failed: adapter Not Present (Enable-NetAdapter cannot recover)"
+            return $false
         }
 
         $isUp = $adapter.AdminStatus -eq 'Up'
@@ -407,7 +557,7 @@ function Set-AdapterStateReliable {
         }
     }
 
-    Write-ReliabilityLog 'Fail' "$DesiredState $Name failed after $MaxAttempts attempts"
+    Write-ReliabilityLog 'Fail' "$DesiredState $Name failed after $attempts attempts"
     return $false
 }
 
@@ -418,17 +568,41 @@ function Invoke-NetworkToggleRequest {
 
     switch ($Request.Type) {
         'Switch' {
-            foreach ($name in $Request.Disable) {
-                if (-not (Set-AdapterStateReliable -Name $name -DesiredState 'Disable')) {
+            $disabledOk = @()
+            foreach ($name in @($Request.Disable)) {
+                if (Set-AdapterStateReliable -Name $name -DesiredState 'Disable') {
+                    $disabledOk += $name
+                }
+                else {
                     $failures += "Disable $name"
                 }
             }
-            foreach ($name in $Request.Enable) {
+
+            $enableOk = $true
+            foreach ($name in @($Request.Enable)) {
                 if (-not (Set-AdapterStateReliable -Name $name -DesiredState 'Enable')) {
+                    $enableOk = $false
                     $failures += "Enable $name"
                 }
             }
-            if ($failures.Count -gt 0) {
+
+            if (-not $enableOk -and $disabledOk.Count -gt 0) {
+                Write-ReliabilityLog 'Rollback' ("Restoring connectivity: " + ($disabledOk -join ', '))
+                foreach ($name in $disabledOk) {
+                    if (Set-AdapterStateReliable -Name $name -DesiredState 'Enable') {
+                        Write-ReliabilityLog 'Rollback' "Restored $name"
+                    }
+                    else {
+                        Write-ReliabilityLog 'Rollback' "FAILED to restore $name"
+                    }
+                }
+
+                $primaryEnable = @($Request.Enable) | Select-Object -First 1
+                $detail = Get-NotPresentUserMessage -AdapterName $primaryEnable
+                $restored = ($disabledOk -join ', ')
+                Show-EthernetToggleToast -Title 'Switch failed' -Message "Could not enable target adapter. $restored restored. $detail"
+            }
+            elseif ($failures.Count -gt 0) {
                 Show-EthernetToggleToast -Title 'Switch incomplete' -Message ($failures -join '; ')
             }
             else {

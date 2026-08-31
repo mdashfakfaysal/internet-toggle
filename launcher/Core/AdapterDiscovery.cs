@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace EthernetToggle.Core
 {
@@ -59,20 +60,12 @@ namespace EthernetToggle.Core
 
             if (ethernet == null)
             {
-                ethernet = physical
-                    .Where(a => Classify(a.Name, a.Description) == AdapterKind.Ethernet)
-                    .OrderByDescending(a => a.IsConnected)
-                    .ThenBy(a => a.Name)
-                    .FirstOrDefault();
+                ethernet = FindBest(physical, AdapterKind.Ethernet);
             }
 
             if (wifi == null)
             {
-                wifi = physical
-                    .Where(a => Classify(a.Name, a.Description) == AdapterKind.WiFi)
-                    .OrderByDescending(a => a.IsConnected)
-                    .ThenBy(a => a.Name)
-                    .FirstOrDefault();
+                wifi = FindBest(physical, AdapterKind.WiFi);
             }
 
             return new ResolvedAdapters
@@ -90,17 +83,56 @@ namespace EthernetToggle.Core
             }
 
             return adapters.FirstOrDefault(a =>
-                a.Name.Equals(hint, StringComparison.OrdinalIgnoreCase));
+                a.Name.Equals(hint, StringComparison.OrdinalIgnoreCase) && a.IsPresent)
+                ?? adapters.FirstOrDefault(a =>
+                    a.Name.Equals(hint, StringComparison.OrdinalIgnoreCase));
         }
 
         private static NetworkAdapterInfo FindBest(IList<NetworkAdapterInfo> adapters, AdapterKind kind)
         {
             return adapters
                 .Where(a => Classify(a.Name, a.Description) == kind)
-                .OrderByDescending(a => a.IsConnected)
+                .OrderBy(a => PresenceScore(a))
+                .ThenBy(a => GhostNameScore(a.Name))
+                .ThenByDescending(a => a.IsConnected)
                 .ThenByDescending(a => a.IsEnabled)
                 .ThenBy(a => a.Name)
                 .FirstOrDefault();
+        }
+
+        private static int PresenceScore(NetworkAdapterInfo adapter)
+        {
+            if (!adapter.IsPresent)
+            {
+                return 10;
+            }
+
+            if (adapter.IsConnected)
+            {
+                return 0;
+            }
+
+            if (adapter.IsEnabled)
+            {
+                return 1;
+            }
+
+            return 2;
+        }
+
+        private static int GhostNameScore(string name)
+        {
+            if (string.Equals(name, "Wi-Fi", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            if (Regex.IsMatch(name ?? string.Empty, @"^Wi-Fi\s+\d+$", RegexOptions.IgnoreCase))
+            {
+                return 2;
+            }
+
+            return 1;
         }
 
         private static bool IsWiFi(string combined)

@@ -1,11 +1,11 @@
-﻿{
-    "productName":  "Internet Switcher",
-    "freeDisplayName":  "Internet Switcher Free",
-    "proDisplayName":  "Internet Switcher Pro",
-    "version":  "1.1.0",
-    "assemblyVersion":  "1.1.0.0",
-    "fileVersion":  "1.1.0.0",
-    "company":  "Internet Switcher",
-    "copyright":  "Copyright (c) 2026",
-    "githubRepo":  "https://github.com/mdashfakfaysal/internet-toggle"
-}
+﻿{
+    "productName":  "Internet Switcher",
+    "freeDisplayName":  "Internet Switcher Free",
+    "proDisplayName":  "Internet Switcher Pro",
+    "version":  "1.0.1",
+    "assemblyVersion":  "1.0.1.0",
+    "fileVersion":  "1.0.1.0",
+    "company":  "IT Doctor 360",
+    "copyright":  "Copyright (c) 2026 IT Doctor 360",
+    "githubRepo":  "https://github.com/mdashfakfaysal/internet-toggle"
+}

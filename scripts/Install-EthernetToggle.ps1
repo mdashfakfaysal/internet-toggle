@@ -88,9 +88,11 @@ if (-not $adapter) {
     Write-Warning "Adapter named `"$($config.ethernetAdapterName)`" was not found. Update config.json if your adapter uses a different name."
 }
 
+$arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File `"$toggleScript`""
+
 $action = New-ScheduledTaskAction `
     -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$toggleScript`""
+    -Argument $arguments
 
 $principal = New-ScheduledTaskPrincipal `
     -UserId "$env:USERDOMAIN\$env:USERNAME" `

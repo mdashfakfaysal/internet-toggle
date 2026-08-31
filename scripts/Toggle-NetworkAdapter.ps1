@@ -6,7 +6,7 @@ param(
     [string]$AdapterName = $null
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptRoot 'EthernetToggle.Common.ps1')
@@ -16,87 +16,29 @@ $paths = Get-EthernetTogglePaths -ScriptRoot $scriptRoot
 $config = Get-EthernetToggleConfig -ConfigPath $paths.ConfigPath
 Initialize-EthernetToggleState -ActionDir $paths.ActionDir
 
-$request = Resolve-NetworkToggleRequest -ActionFile $paths.ActionFile -DefaultAction $Action -DefaultAdapter $config.adapterName
+Clear-StaleOperationLock -LockFile $paths.LockFile
 
-function Set-AdapterState {
-    param(
-        [string]$Name,
-        [ValidateSet('Enable', 'Disable')]
-        [string]$DesiredState
-    )
-
-    Assert-ValidAdapterName -Name $Name
-
-    $adapter = Get-NetAdapter -Name $Name -ErrorAction SilentlyContinue
-    if (-not $adapter) {
-        Write-Warning "Adapter not found: $Name"
-        return
-    }
-
-    $isUp = $adapter.AdminStatus -eq 'Up'
-    if ($DesiredState -eq 'Enable' -and -not $isUp) {
-        Enable-NetAdapter -Name $Name -Confirm:$false
-    }
-    elseif ($DesiredState -eq 'Disable' -and $isUp) {
-        Disable-NetAdapter -Name $Name -Confirm:$false
-    }
+if (-not (Enter-OperationLock -LockFile $paths.LockFile)) {
+    Write-ReliabilityLog 'Skip' 'Operation already in progress'
+    exit 0
 }
 
-switch ($request.Type) {
-    'Switch' {
-        foreach ($name in $request.Disable) {
-            Set-AdapterState -Name $name -DesiredState 'Disable'
+try {
+    do {
+        $requests = @(Get-QueuedActionRequests -QueueFile $paths.QueueFile -LegacyActionFile $paths.ActionFile)
+        if ($requests.Count -eq 0 -and $Action -ne 'Toggle') {
+            $requests = @([PSCustomObject]@{ Type = $Action; Adapter = $AdapterName })
         }
-        foreach ($name in $request.Enable) {
-            Set-AdapterState -Name $name -DesiredState 'Enable'
-        }
-        Show-EthernetToggleToast -Title 'Network switched' -Message ($request.Message)
-    }
-    'Batch' {
-        foreach ($item in $request.Items) {
-            Set-AdapterState -Name $item.Adapter -DesiredState $item.Action
-        }
-        Show-EthernetToggleToast -Title 'Adapters updated' -Message ($request.Message)
-    }
-    default {
-        $target = if ($request.Adapter) { $request.Adapter } else { $config.adapterName }
-        Assert-ValidAdapterName -Name $target
-        $adapter = Get-NetAdapter -Name $target -ErrorAction SilentlyContinue
-        if (-not $adapter) {
-            Show-EthernetToggleToast -Title 'Adapter missing' -Message "Could not find `"$target`"."
-            return
+        elseif ($requests.Count -eq 0) {
+            break
         }
 
-        $isEnabled = $adapter.AdminStatus -eq 'Up'
-        switch ($request.Type) {
-            'Enable' {
-                if (-not $isEnabled) {
-                    Enable-NetAdapter -Name $target -Confirm:$false
-                    Show-EthernetToggleToast -Title "$target enabled" -Message "The adapter is now active."
-                }
-                else {
-                    Show-EthernetToggleToast -Title "$target already on" -Message 'The adapter is already enabled.'
-                }
-            }
-            'Disable' {
-                if ($isEnabled) {
-                    Disable-NetAdapter -Name $target -Confirm:$false
-                    Show-EthernetToggleToast -Title "$target disabled" -Message 'The adapter is now disabled.'
-                }
-                else {
-                    Show-EthernetToggleToast -Title "$target already off" -Message 'The adapter is already disabled.'
-                }
-            }
-            default {
-                if ($isEnabled) {
-                    Disable-NetAdapter -Name $target -Confirm:$false
-                    Show-EthernetToggleToast -Title "$target disabled" -Message 'The adapter is now disabled.'
-                }
-                else {
-                    Enable-NetAdapter -Name $target -Confirm:$false
-                    Show-EthernetToggleToast -Title "$target enabled" -Message 'The adapter is now active.'
-                }
-            }
+        foreach ($request in $requests) {
+            Write-ReliabilityLog 'Process' ($request.Type)
+            Invoke-NetworkToggleRequest -Request $request -Config $config
         }
-    }
+    } while (Test-Path -LiteralPath $paths.QueueFile)
+}
+finally {
+    Exit-OperationLock -LockFile $paths.LockFile
 }

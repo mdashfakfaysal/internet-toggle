@@ -18,6 +18,19 @@ namespace EthernetToggle.Pro
             _config = config;
         }
 
+        public void UpdateResolvedNames(string ethernetName, string wifiName)
+        {
+            if (!string.IsNullOrWhiteSpace(ethernetName))
+            {
+                _config.ethernetAdapterName = ethernetName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(wifiName))
+            {
+                _config.wifiAdapterName = wifiName;
+            }
+        }
+
         public AutomationResult Evaluate(IList<NetworkAdapterSnapshot> adapters, DateTime now)
         {
             var eth = FindAdapter(adapters, _config.ethernetAdapterName);

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "appName": "Internet Switcher",
   "exeName": "Internet Switcher Free",
   "taskName": "ToggleInternetAdapter",
@@ -8,5 +8,6 @@
   "wifiAdapterName": "Wi-Fi",
   "excludePatterns": ["vEthernet", "Hyper-V"],
   "launchAtStartup": true,
-  "startMinimizedToTray": true
+  "startMinimizedToTray": true,
+  "_comment": "ethernetAdapterName and wifiAdapterName are hints only; app auto-detects adapters like Ethernet 2"
 }

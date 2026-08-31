@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-08-31
+
+### Fixed — Microsoft Store certification (10.1.2.10, 10.1.1.1)
+
+- Dynamic adapter discovery for renamed adapters (e.g. Ethernet 2)
+- One-time in-app UAC setup for Store installs without admin install script
+- Operation queue, retry+verify, hidden PowerShell, concurrency guard
+- 150% DPI layout fixes (680px window, wider header)
+
+See `docs/CERTIFICATION_FIXES.md`.
+
 ## [1.1.0] - 2026-08-28
 
 ### Added — Internet Switcher Pro features

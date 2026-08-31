@@ -206,3 +206,23 @@ If device remains `CM_PROB_FAILED_START` after app recovery:
 4. Check hardware Wi-Fi switch / airplane mode (Fn key)
 
 **Important:** App rollback ensures Ethernet is restored if Wi-Fi cannot be enabled — user should not remain offline after a failed switch.
+
+---
+
+## RC-11 — Disabling Wi-Fi adapter wedges MediaTek driver (CRITICAL, v2.0.0)
+
+**Hypothesis confirmed:** Repeated `Disable-NetAdapter` on MediaTek MT7925 after power loss / app switching leaves PnP device in `CM_PROB_FAILED_START` and net adapters show **Not Present**. `Enable-NetAdapter` cannot recover.
+
+### v2.0 safe switching strategy
+
+| User action | Safe default behavior | Avoid |
+|-------------|----------------------|-------|
+| Use Wi-Fi | Enable Wi-Fi first, then disable Ethernet | Disabling Wi-Fi adapter |
+| Use Ethernet | Enable Ethernet + `netsh wlan disconnect` | Disabling Wi-Fi adapter |
+| Advanced (opt-in) | Optionally disable Wi-Fi when using Ethernet | Off by default |
+
+### Other v2.0 changes
+
+- Removed Pro automation (failover/rules/schedules) from compiled app — no background adapter mutations
+- No network state changes at app launch
+- Single edition build: `Internet Switcher.exe`

@@ -9,7 +9,7 @@ namespace EthernetToggle.Edition
 
         public string GetEditionDisplayName()
         {
-            return "Internet Switcher Free";
+            return "Internet Switcher";
         }
     }
 }

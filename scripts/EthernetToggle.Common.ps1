@@ -273,6 +273,26 @@ function ConvertFrom-QueuePayload {
     param($Payload)
     $type = if ($Payload.type) { [string]$Payload.type } else { 'Toggle' }
 
+    if ($type -eq 'UseWifi') {
+        return [PSCustomObject]@{
+            Type             = 'UseWifi'
+            WiFiAdapter      = if ($Payload.wifiAdapter) { [string]$Payload.wifiAdapter } else { $null }
+            EthernetAdapter  = if ($Payload.ethernetAdapter) { [string]$Payload.ethernetAdapter } else { $null }
+            AlsoDisableOther = [bool]$Payload.alsoDisableOther
+            Message          = if ($Payload.message) { [string]$Payload.message } else { 'Now using Wi-Fi.' }
+        }
+    }
+
+    if ($type -eq 'UseEthernet') {
+        return [PSCustomObject]@{
+            Type             = 'UseEthernet'
+            WiFiAdapter      = if ($Payload.wifiAdapter) { [string]$Payload.wifiAdapter } else { $null }
+            EthernetAdapter  = if ($Payload.ethernetAdapter) { [string]$Payload.ethernetAdapter } else { $null }
+            AlsoDisableOther = [bool]$Payload.alsoDisableOther
+            Message          = if ($Payload.message) { [string]$Payload.message } else { 'Now using Ethernet.' }
+        }
+    }
+
     if ($type -eq 'Switch') {
         return [PSCustomObject]@{
             Type    = 'Switch'
@@ -561,12 +581,105 @@ function Set-AdapterStateReliable {
     return $false
 }
 
+function Invoke-WlanDisconnect {
+    try {
+        $null = netsh wlan disconnect 2>&1
+        Write-ReliabilityLog 'Wlan' 'Disconnected Wi-Fi session (netsh wlan disconnect)'
+        return $true
+    }
+    catch {
+        Write-ReliabilityLog 'Wlan' "wlan disconnect failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Invoke-UseWifi {
+    param($Request, $Config)
+
+    $resolved = Resolve-PreferredAdapters -Config $Config
+    $wifiName = if ($Request.WiFiAdapter) { [string]$Request.WiFiAdapter } elseif ($resolved.WiFi) { [string]$resolved.WiFi.Name } else { $null }
+    $ethName = if ($Request.EthernetAdapter) { [string]$Request.EthernetAdapter } elseif ($resolved.Ethernet) { [string]$resolved.Ethernet.Name } else { $null }
+
+    if (-not $wifiName) {
+        Show-EthernetToggleToast -Title 'Wi-Fi unavailable' -Message 'No Wi-Fi adapter detected on this PC.'
+        return
+    }
+
+    # Safe order: enable Wi-Fi FIRST while Ethernet still provides connectivity
+    if (-not (Set-AdapterStateReliable -Name $wifiName -DesiredState 'Enable')) {
+        $detail = Get-NotPresentUserMessage -AdapterName $wifiName
+        Show-EthernetToggleToast -Title 'Could not use Wi-Fi' -Message $detail
+        return
+    }
+
+    $ethDisabled = $false
+    if ($ethName) {
+        if (Set-AdapterStateReliable -Name $ethName -DesiredState 'Disable') {
+            $ethDisabled = $true
+            Write-ReliabilityLog 'UseWifi' "Disabled Ethernet adapter $ethName"
+        }
+        else {
+            Write-ReliabilityLog 'UseWifi' "Could not disable $ethName - Wi-Fi is enabled, Ethernet may still be active"
+        }
+    }
+
+    $wifi = Get-NetAdapter -Name $wifiName -ErrorAction SilentlyContinue
+    if ($wifi -and $wifi.AdminStatus -eq 'Up') {
+        Show-EthernetToggleToast -Title 'Using Wi-Fi' -Message ($Request.Message)
+        return
+    }
+
+    if ($ethDisabled -and $ethName) {
+        Write-ReliabilityLog 'Rollback' "Wi-Fi not verified Up - restoring $ethName"
+        Set-AdapterStateReliable -Name $ethName -DesiredState 'Enable' | Out-Null
+        Show-EthernetToggleToast -Title 'Switch failed' -Message "Wi-Fi could not be verified. $ethName restored."
+    }
+}
+
+function Invoke-UseEthernet {
+    param($Request, $Config)
+
+    $resolved = Resolve-PreferredAdapters -Config $Config
+    $wifiName = if ($Request.WiFiAdapter) { [string]$Request.WiFiAdapter } elseif ($resolved.WiFi) { [string]$resolved.WiFi.Name } else { $null }
+    $ethName = if ($Request.EthernetAdapter) { [string]$Request.EthernetAdapter } elseif ($resolved.Ethernet) { [string]$resolved.Ethernet.Name } else { $null }
+
+    if (-not $ethName) {
+        Show-EthernetToggleToast -Title 'Ethernet unavailable' -Message 'No Ethernet adapter detected on this PC.'
+        return
+    }
+
+    if (-not (Set-AdapterStateReliable -Name $ethName -DesiredState 'Enable')) {
+        Show-EthernetToggleToast -Title 'Could not use Ethernet' -Message "Could not enable `"$ethName`". Check cable connection."
+        return
+    }
+
+    if ($wifiName) {
+        Invoke-WlanDisconnect | Out-Null
+        if ($Request.AlsoDisableOther) {
+            Write-ReliabilityLog 'UseEthernet' "Advanced: disabling Wi-Fi adapter $wifiName"
+            if (-not (Set-AdapterStateReliable -Name $wifiName -DesiredState 'Disable')) {
+                Write-ReliabilityLog 'UseEthernet' "Advanced Wi-Fi disable failed - Ethernet is still enabled"
+            }
+        }
+    }
+
+    Show-EthernetToggleToast -Title 'Using Ethernet' -Message ($Request.Message)
+}
+
 function Invoke-NetworkToggleRequest {
     param($Request, $Config)
 
     $failures = @()
 
     switch ($Request.Type) {
+        'UseWifi' {
+            Invoke-UseWifi -Request $Request -Config $Config
+            return
+        }
+        'UseEthernet' {
+            Invoke-UseEthernet -Request $Request -Config $Config
+            return
+        }
         'Switch' {
             $disabledOk = @()
             foreach ($name in @($Request.Disable)) {

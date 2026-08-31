@@ -1,6 +1,6 @@
 # Internet Switcher
 
-**Instantly switch between Wi-Fi and Ethernet on Windows — from your system tray.**
+**Switch between Wi-Fi and Ethernet on Windows — one click from the system tray.**
 
 [![Release](https://img.shields.io/github/v/release/mdashfakfaysal/internet-toggle)](https://github.com/mdashfakfaysal/internet-toggle/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -9,164 +9,92 @@
 
 ![Internet Switcher](assets/logo.png)
 
-> Dorm Wi-Fi acting up? Switch to your phone hotspot in one click. No repeated admin prompts after setup.
+> Dorm Wi-Fi acting up? Use Ethernet. Need wireless? Use Wi-Fi. The app uses **safe switching** — it does not disable your Wi-Fi adapter unless you explicitly turn that on in Advanced settings.
 
-## Free vs Pro
+## What it does
 
-| Feature | Free | Pro |
-|---------|:----:|:---:|
-| Enable / disable adapters | Yes | Yes |
-| Switch Ethernet ↔ Wi-Fi | Yes | Yes |
-| Adapter status display | Yes | Yes |
-| System tray + startup | Yes | Yes |
-| Basic hotkey (Ctrl+Alt+W) | Yes | Yes |
-| Multiple network profiles | — | **Yes** |
-| Automatic failover | — | **Yes** |
-| Per-adapter rules | — | **Yes** |
-| Advanced configurable hotkeys | — | **Yes** |
-| Daily schedules | — | **Yes** |
-| Connection history | — | **Yes** |
-| Import / export config | — | **Yes** |
-| Tray profile quick-apply | — | **Yes** |
-
-## Features
-
-- **Dynamic adapter list** — discovers Ethernet, Wi-Fi, and other adapters automatically
-- **Per-adapter toggle** — enable or disable any adapter individually
-- **Quick switch** — Switch to Ethernet / Switch to Wi-Fi presets
-- **Standalone Windows app** — `Internet Switcher Free.exe` with custom icon
-- **System tray** — live status, quick actions, hide-to-tray
-- **Settings** — launch at startup, start minimized to tray
-- **No UAC prompts** after one-time admin install
-- **Single-instance** — relaunching focuses existing window
-- **Privacy-first** — no telemetry, no ads ([PRIVACY.md](PRIVACY.md))
+- **Use Wi-Fi** — enables Wi-Fi, then disables Ethernet (wired adapters recover reliably)
+- **Use Ethernet** — enables Ethernet and disconnects Wi-Fi sessions without disabling the Wi-Fi driver (safer for fragile WLAN hardware)
+- **Per-adapter Enable/Disable** — manual control for any detected adapter
+- **System tray** — quick actions, live status, hide to tray
+- **Auto-detect adapters** — finds Realtek Ethernet, MediaTek Wi-Fi, USB adapters like "Ethernet 2", etc.
+- **No repeated UAC** after one-time admin setup
+- **Rollback** — if a switch fails, restores your working adapter so you are not left offline
 
 ## Requirements
 
 - Windows 10 or 11 (64-bit)
 - PowerShell 5.1+ (install only)
-- Administrator rights for **install only**
+- Administrator rights for **one-time setup only**
 
 ## Download
 
-### GitHub Releases (recommended)
+### GitHub Releases
 
 1. Download from [GitHub Releases](https://github.com/mdashfakfaysal/internet-toggle/releases)
-   - **Free:** `internet-switcher-free-x64-*.zip`
-   - **Pro:** `internet-switcher-pro-x64-*.zip`
-2. Verify SHA-256 checksum (`.sha256` file included)
-3. Extract and run `scripts\Install-EthernetToggle.ps1` as Administrator
+2. Extract and run `scripts\Install-EthernetToggle.ps1` as Administrator (registers elevated scheduled task)
+3. Launch **Internet Switcher.exe**
 
 ### Microsoft Store
 
-Coming soon — see [docs/MICROSOFT_STORE.md](docs/MICROSOFT_STORE.md)
-
-### Winget / Chocolatey
-
-Coming soon — placeholders for future package submissions.
+Partner Center app — see [docs/MICROSOFT_STORE.md](docs/MICROSOFT_STORE.md)
 
 ## Quick Start
 
 ```powershell
 cd path\to\internet-toggle
-.\scripts\Install-EthernetToggle.ps1   # Run as Administrator
+.\scripts\Install-EthernetToggle.ps1   # Run as Administrator once
+.\Internet Switcher.exe
 ```
-
-Launch from Start search (**Internet Switcher**), taskbar pin, or `Internet Switcher Free.exe`.
 
 ## Usage
 
 | Action | How |
 |--------|-----|
-| Switch to hotspot | Click **Switch to Wi-Fi** or press **Ctrl+Alt+W** |
-| Switch to wired | Click **Switch to Ethernet** |
-| Toggle one adapter | Click **Enable** / **Disable** on its row |
-| Open from tray | Left-click tray icon |
-| Settings | **Settings** button in header |
-| About / version | **About** button in header |
-| Exit | Right-click tray → **Exit** |
+| Use Wi-Fi | Click **Use Wi-Fi** in the window or tray menu |
+| Use Ethernet | Click **Use Ethernet** in the window or tray menu |
+| Toggle one adapter | Enable/Disable button on each adapter row |
+| Settings | Launch at startup, start minimized, advanced Wi-Fi disable (off by default) |
 
-## Administrator Privileges
+**Hotkey:** Ctrl+Alt+W → Use Wi-Fi
 
-Internet Switcher changes network adapter state, which Windows requires admin rights for. After the **one-time install**, a pre-registered scheduled task handles adapter changes **without repeated UAC prompts**. See [docs/PRIVILEGE_MODEL.md](docs/PRIVILEGE_MODEL.md).
+## Safe switching (why v2.0 is different)
 
-## Configuration
+Older versions disabled both adapters during a switch. On some Wi-Fi chips (e.g. MediaTek MT7925), repeated `Disable-NetAdapter` on Wi-Fi can wedge the driver into **Not Present** / `CM_PROB_FAILED_START`.
 
-Edit `config.json` for adapter names and exclusions. User settings live in `%LOCALAPPDATA%\InternetToggle\settings.json`.
+v2.0 defaults to:
+
+| Goal | What the app does |
+|------|-------------------|
+| Use Wi-Fi | Enable Wi-Fi → disable Ethernet only |
+| Use Ethernet | Enable Ethernet → `netsh wlan disconnect` (Wi-Fi stays enabled) |
+
+Optional **Advanced** setting: also disable the Wi-Fi adapter when using Ethernet (not recommended).
+
+## Wi-Fi not working?
+
+If Wi-Fi shows **Not Present** after a power outage:
 
 ```powershell
-Get-NetAdapter | Select-Object Name, Status, InterfaceDescription
+# Run as Administrator — does NOT disable Ethernet
+.\scripts\Recover-WifiAdapter.ps1
 ```
 
-## Build from Source
+Manual steps: Device Manager → uninstall MediaTek Wi-Fi device (keep driver) → Scan for hardware changes → reinstall driver if needed → reboot.
+
+Logs: `%LOCALAPPDATA%\InternetToggle\reliability.log`
+
+## Build
 
 ```powershell
-# Free edition
-.\scripts\Build-Launcher.ps1 -Edition Free
-
-# Pro edition
-.\scripts\Build-Launcher.ps1 -Edition Pro
-
-# Install Pro (run as Administrator)
-.\scripts\Install-EthernetToggle.ps1 -Edition Pro
-
-# Full release packages + checksums
-.\scripts\Build-Release.ps1 -Version 1.1.0
-
-# Run tests
-.\tests\Run-Tests.ps1
+.\scripts\Build-Launcher.ps1
+.\packaging\msix\Build-Msix.ps1
 ```
 
-See [docs/BUILD.md](docs/BUILD.md) for details.
+## Privacy
 
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| Toggle does nothing | Re-run `Install-EthernetToggle.ps1` as admin |
-| Adapter not listed | Check name with `Get-NetAdapter`, update `config.json` |
-| UAC every toggle | Scheduled task missing — reinstall |
-| Wrong status label | Click refresh or restart app |
-
-## FAQ
-
-**Does this make my internet faster?**  
-No. It switches between adapters — it does not speed up your connection.
-
-**Does it collect my data?**  
-No telemetry by default. See [PRIVACY.md](PRIVACY.md).
-
-**Can I use this commercially?**  
-The source is MIT-licensed. Internet Switcher Pro is the commercial edition.
-
-## Documentation
-
-| Doc | Description |
-|-----|-------------|
-| [TECHNICAL_AUDIT.md](docs/TECHNICAL_AUDIT.md) | Architecture audit |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |
-| [PRIVILEGE_MODEL.md](docs/PRIVILEGE_MODEL.md) | Admin/security model |
-| [BUILD.md](docs/BUILD.md) | Build instructions |
-| [RELEASE.md](docs/RELEASE.md) | Release process |
-| [MICROSOFT_STORE.md](docs/MICROSOFT_STORE.md) | Store submission checklist |
-
-## Contributing
-
-Issues and pull requests welcome at [github.com/mdashfakfaysal/internet-toggle](https://github.com/mdashfakfaysal/internet-toggle/issues).
+No telemetry, no ads — see [PRIVACY.md](PRIVACY.md)
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Third-party notices in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-## Roadmap
-
-- [x] Free edition with tray + quick switch
-- [x] Free/Pro build configuration
-- [x] Edition feature gating architecture
-- [x] Pro: network profiles
-- [x] Pro: automatic failover
-- [x] Pro: advanced hotkeys, schedules, rules, history, import/export
-- [ ] Windows installer (Inno Setup)
-- [ ] Microsoft Store submission
-- [ ] Winget package
-- [ ] Auto-update check
+MIT — see [LICENSE](LICENSE)

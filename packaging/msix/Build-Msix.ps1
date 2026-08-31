@@ -77,22 +77,27 @@ function Update-ManifestVersion {
     Set-Content -LiteralPath $ManifestPath -Value $content -Encoding UTF8 -NoNewline
 }
 
-Write-Host "Building Internet Switcher Free MSIX (v$Version)..." -ForegroundColor Cyan
+Write-Host "Building Internet Switcher MSIX (v$Version)..." -ForegroundColor Cyan
 
-# Build Free exe (skip if already built and -SkipBuild)
-$freeExe = Join-Path $repoRoot 'Internet Switcher Free.exe'
-$tempFreeExe = Join-Path $repoRoot 'Internet Switcher Free.build.tmp.exe'
-if ($SkipBuild -and (Test-Path $freeExe)) {
-    Write-Host "Skipping exe rebuild (using existing $freeExe)"
+$primaryExe = Join-Path $repoRoot 'Internet Switcher.exe'
+$storeExeName = 'Internet Switcher Free.exe'
+$packExe = Join-Path $repoRoot $storeExeName
+if ($SkipBuild -and (Test-Path $primaryExe)) {
+    Write-Host "Skipping exe rebuild (using existing $primaryExe)"
 }
 else {
-    & (Join-Path $repoRoot 'scripts\Build-Launcher.ps1') -Edition Free
+    & (Join-Path $repoRoot 'scripts\Build-Launcher.ps1')
 }
 
-if ((Test-Path $tempFreeExe) -and (-not (Test-Path $freeExe) -or ((Get-Item $tempFreeExe).LastWriteTime -gt (Get-Item $freeExe).LastWriteTime))) {
-    $freeExe = $tempFreeExe
-    Write-Host "Using newer build artifact: $freeExe" -ForegroundColor Yellow
+if (Test-Path $primaryExe) {
+    Copy-Item -LiteralPath $primaryExe -Destination $packExe -Force
+    Write-Host "Staged store exe from $primaryExe"
 }
+elseif (-not (Test-Path $packExe)) {
+    throw "Built executable not found: $primaryExe"
+}
+
+$freeExe = $packExe
 
 # Generate MSIX visual assets
 & (Join-Path $msixRoot 'New-MsixAssets.ps1')

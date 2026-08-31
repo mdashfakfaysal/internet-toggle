@@ -1,13 +1,13 @@
 {
-  "version": "1.0.1",
+  "version": "2.0.0",
   "appName": "Internet Switcher",
-  "exeName": "Internet Switcher Free",
+  "exeName": "Internet Switcher",
   "taskName": "ToggleInternetAdapter",
   "adapterName": "Ethernet",
   "ethernetAdapterName": "Ethernet",
   "wifiAdapterName": "Wi-Fi",
   "excludePatterns": ["vEthernet", "Hyper-V"],
-  "launchAtStartup": true,
+  "launchAtStartup": false,
   "startMinimizedToTray": true,
-  "_comment": "ethernetAdapterName and wifiAdapterName are hints only; app auto-detects adapters like Ethernet 2"
+  "_comment": "Adapter names are hints only; app auto-detects. Never changes network state at launch."
 }

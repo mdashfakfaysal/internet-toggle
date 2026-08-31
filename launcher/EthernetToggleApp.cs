@@ -13,7 +13,6 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using EthernetToggle.Core;
 using EthernetToggle.Edition;
-using EthernetToggle.Pro;
 using EthernetToggle.UI;
 
 namespace EthernetToggle
@@ -73,7 +72,7 @@ namespace EthernetToggle
                 appName = "Internet Toggle",
                 exeName = "Internet Toggle",
                 excludePatterns = new[] { "vEthernet", "Hyper-V" },
-                launchAtStartup = true,
+                launchAtStartup = false,
                 startMinimizedToTray = true
             };
         }
@@ -83,13 +82,15 @@ namespace EthernetToggle
     {
         public bool launchAtStartup { get; set; }
         public bool startMinimizedToTray { get; set; }
+        public bool alsoDisableOtherAdapter { get; set; }
 
         public static UserSettings FromDefaults(AppConfig config)
         {
             return new UserSettings
             {
                 launchAtStartup = config.launchAtStartup,
-                startMinimizedToTray = config.startMinimizedToTray
+                startMinimizedToTray = config.startMinimizedToTray,
+                alsoDisableOtherAdapter = false
             };
         }
 
@@ -111,6 +112,7 @@ namespace EthernetToggle
 
                 settings.launchAtStartup = loaded.launchAtStartup;
                 settings.startMinimizedToTray = loaded.startMinimizedToTray;
+                settings.alsoDisableOtherAdapter = loaded.alsoDisableOtherAdapter;
                 return settings;
             }
             catch
@@ -410,6 +412,7 @@ namespace EthernetToggle
     {
         private readonly CheckBox _startupCheck;
         private readonly CheckBox _minimizedCheck;
+        private readonly CheckBox _alsoDisableCheck;
         private readonly UserSettings _settings;
         private readonly Action<UserSettings> _onChanged;
 
@@ -423,7 +426,7 @@ namespace EthernetToggle
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterParent;
-            ClientSize = new Size(400, 210);
+            ClientSize = new Size(440, 300);
             BackColor = Color.FromArgb(30, 30, 30);
             ForeColor = Color.White;
 
@@ -443,8 +446,23 @@ namespace EthernetToggle
 
             _minimizedCheck = CreateSettingCheckBox("Start minimized to tray", 104, settings.startMinimizedToTray);
             var minimizedDescription = CreateDescriptionLabel(
-                "On launch, show only the tray icon. Click the tray icon to open the window.",
+                "On launch, show only the tray icon.",
                 126);
+
+            var advancedLabel = new Label
+            {
+                Text = "Advanced (not recommended)",
+                Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+                ForeColor = Color.White,
+                AutoSize = true,
+                Location = new Point(20, 162)
+            };
+
+            _alsoDisableCheck = CreateSettingCheckBox("When using Ethernet, also disable the Wi-Fi adapter", 194, settings.alsoDisableOtherAdapter);
+            var alsoDisableDescription = CreateDescriptionLabel(
+                "Off by default. Safer mode disconnects Wi-Fi without disabling its driver.",
+                216,
+                400);
 
             _startupCheck.CheckedChanged += (s, e) =>
             {
@@ -458,11 +476,17 @@ namespace EthernetToggle
                 _onChanged(_settings);
             };
 
+            _alsoDisableCheck.CheckedChanged += (s, e) =>
+            {
+                _settings.alsoDisableOtherAdapter = _alsoDisableCheck.Checked;
+                _onChanged(_settings);
+            };
+
             var closeButton = new Button
             {
                 Text = "Close",
                 Size = new Size(88, 30),
-                Location = new Point(292, 168),
+                Location = new Point(332, 258),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(70, 130, 220),
                 ForeColor = Color.White,
@@ -476,6 +500,9 @@ namespace EthernetToggle
             Controls.Add(startupDescription);
             Controls.Add(_minimizedCheck);
             Controls.Add(minimizedDescription);
+            Controls.Add(advancedLabel);
+            Controls.Add(_alsoDisableCheck);
+            Controls.Add(alsoDisableDescription);
             Controls.Add(closeButton);
             AcceptButton = closeButton;
         }
@@ -493,7 +520,7 @@ namespace EthernetToggle
             };
         }
 
-        private static Label CreateDescriptionLabel(string text, int top)
+        private static Label CreateDescriptionLabel(string text, int top, int width = 360)
         {
             return new Label
             {
@@ -501,7 +528,7 @@ namespace EthernetToggle
                 Font = new Font("Segoe UI", 8.25f),
                 ForeColor = Color.FromArgb(160, 160, 160),
                 AutoSize = false,
-                Size = new Size(360, 32),
+                Size = new Size(width, 32),
                 Location = new Point(38, top)
             };
         }
@@ -523,10 +550,6 @@ namespace EthernetToggle
         private readonly Label _summaryLabel;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly AppVersionInfo _productVersion;
-        private readonly bool _isProEdition;
-        private readonly ProDataStore _proStore;
-        private readonly AutomationService _automation;
-        private HotkeyService _hotkeyService;
         private GlobalHotkey _wifiHotkey;
         private Bitmap _heldBitmap;
         private IntPtr _iconHandle = IntPtr.Zero;
@@ -539,21 +562,6 @@ namespace EthernetToggle
             _config = config;
             _repoRoot = repoRoot;
             _productVersion = AppVersionInfo.Load(repoRoot);
-            _isProEdition = EditionService.IsProEdition();
-            if (_isProEdition)
-            {
-                _proStore = new ProDataStore();
-                _automation = new AutomationService(_proStore, new AppConfigSnapshot
-                {
-                    ethernetAdapterName = config.ethernetAdapterName,
-                    wifiAdapterName = config.wifiAdapterName
-                });
-            }
-            else
-            {
-                _proStore = null;
-                _automation = null;
-            }
             _exePath = Assembly.GetExecutingAssembly().Location;
             _actionFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "pending-action.json");
             _signalFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternetToggle", "show-window.signal");
@@ -569,18 +577,9 @@ namespace EthernetToggle
             MainForm = _form;
             _adapterList.Resize += (s, e) => ResizeAdapterRows();
             _notifyIcon = BuildNotifyIcon();
-            if (_isProEdition)
-            {
-                _hotkeyService = new HotkeyService(_form, _proStore);
-                _hotkeyService.HotkeyActionRequested += OnHotkeyActionRequested;
-                _hotkeyService.RegisterAll(true);
-            }
-            else
-            {
-                RegisterBasicHotkey();
-            }
+            RegisterBasicHotkey();
 
-            _timer = new System.Windows.Forms.Timer { Interval = 2000 };
+            _timer = new System.Windows.Forms.Timer { Interval = 3000 };
             _timer.Tick += OnTimerTick;
             _timer.Start();
 
@@ -594,11 +593,6 @@ namespace EthernetToggle
 
         private void RegisterBasicHotkey()
         {
-            if (!EditionService.CanUseFeature(Feature.BasicHotkey))
-            {
-                return;
-            }
-
             try
             {
                 _wifiHotkey = new GlobalHotkey(_form, 1, Keys.W, 0x0001 | 0x0002);
@@ -666,7 +660,7 @@ namespace EthernetToggle
 
             var titleLabel = new Label
             {
-                Text = EditionService.GetEditionLabel(),
+                Text = _productVersion.productName,
                 Font = new Font("Segoe UI", 13f, FontStyle.Bold),
                 ForeColor = Color.White,
                 Dock = DockStyle.Fill,
@@ -676,7 +670,7 @@ namespace EthernetToggle
 
             var subtitleLabel = new Label
             {
-                Text = (_isProEdition ? "Pro edition · " : string.Empty) + "Internet adapter control · v" + _productVersion.GetDisplayVersion(),
+                Text = "Simple Wi-Fi / Ethernet switch · v" + _productVersion.GetDisplayVersion(),
                 Font = new Font("Segoe UI", 9f),
                 ForeColor = Color.FromArgb(170, 170, 170),
                 Dock = DockStyle.Fill,
@@ -700,10 +694,7 @@ namespace EthernetToggle
             aboutButton.Click += (s, e) => ShowAboutDialog();
             var settingsButton = CreateHeaderButton("Settings");
             settingsButton.Click += (s, e) => ShowSettingsDialog();
-            var profilesButton = CreateHeaderButton("Profiles");
-            profilesButton.Click += (s, e) => ShowProFeature(Feature.MultipleProfiles);
 
-            headerActionsPanel.Controls.Add(profilesButton);
             headerActionsPanel.Controls.Add(settingsButton);
             headerActionsPanel.Controls.Add(aboutButton);
 
@@ -714,8 +705,8 @@ namespace EthernetToggle
             var quickPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 52,
-                Padding = new Padding(16, 8, 16, 8),
+                Height = 72,
+                Padding = new Padding(16, 10, 16, 10),
                 BackColor = Color.FromArgb(30, 30, 30),
                 ColumnCount = 2,
                 RowCount = 1
@@ -723,9 +714,9 @@ namespace EthernetToggle
             quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
             quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
 
-            var ethernetButton = CreateQuickButton("Switch to Ethernet");
+            var ethernetButton = CreateQuickButton("Use Ethernet");
             ethernetButton.Click += (s, e) => SwitchToEthernet();
-            var wifiButton = CreateQuickButton("Switch to Wi-Fi");
+            var wifiButton = CreateQuickButton("Use Wi-Fi");
             wifiButton.Click += (s, e) => SwitchToWifi();
 
             ethernetButton.Margin = new Padding(0, 0, 4, 0);
@@ -827,9 +818,9 @@ namespace EthernetToggle
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(70, 130, 220),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9.25f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
                 Cursor = Cursors.Hand,
-                Height = 32
+                Height = 48
             };
             button.FlatAppearance.BorderSize = 0;
             return button;
@@ -864,8 +855,8 @@ namespace EthernetToggle
         {
             var menu = new ContextMenuStrip();
             var showItem = new ToolStripMenuItem("Show Window");
-            var ethItem = new ToolStripMenuItem("Switch to Ethernet");
-            var wifiItem = new ToolStripMenuItem("Switch to Wi-Fi");
+            var ethItem = new ToolStripMenuItem("Use Ethernet");
+            var wifiItem = new ToolStripMenuItem("Use Wi-Fi");
             var exitItem = new ToolStripMenuItem("Exit");
 
             showItem.Click += (s, e) => ShowMainWindow();
@@ -880,14 +871,6 @@ namespace EthernetToggle
             menu.Items.Add(showItem);
             menu.Items.Add(ethItem);
             menu.Items.Add(wifiItem);
-
-            if (_isProEdition && EditionService.CanUseFeature(Feature.AdvancedTrayActions))
-            {
-                var profilesMenu = new ToolStripMenuItem("Apply Profile");
-                RefreshTrayProfileMenu(profilesMenu);
-                profilesMenu.DropDownOpening += (s, e) => RefreshTrayProfileMenu(profilesMenu);
-                menu.Items.Add(profilesMenu);
-            }
 
             menu.Items.Add(exitItem);
 
@@ -1028,11 +1011,6 @@ namespace EthernetToggle
             var adapters = AdapterHelper.GetAdapters(_config, includeVirtual: false);
             _resolvedAdapters = AdapterDiscovery.Resolve(adapters, _config.wifiAdapterName, _config.ethernetAdapterName);
 
-            if (_isProEdition && _automation != null)
-            {
-                _automation.UpdateResolvedNames(_resolvedAdapters.EthernetName, _resolvedAdapters.WiFiName);
-            }
-
             var rowWidth = GetAdapterRowWidth();
             _adapterList.SuspendLayout();
             _adapterList.Controls.Clear();
@@ -1164,7 +1142,6 @@ namespace EthernetToggle
             }
 
             AppLogger.Info(action, adapterName, true, "Queued adapter action");
-            RecordHistory(action, adapterName, source);
             Thread.Sleep(1200);
             RefreshAdapters();
         }
@@ -1177,24 +1154,18 @@ namespace EthernetToggle
                 return;
             }
 
-            var disableList = new List<string>();
-            if (_resolvedAdapters.WiFiName != null)
-            {
-                disableList.Add(_resolvedAdapters.WiFiName);
-            }
-
             if (!TryQueueOperation(new Dictionary<string, object>
             {
-                { "type", "Switch" },
-                { "enable", new[] { _resolvedAdapters.EthernetName } },
-                { "disable", disableList.ToArray() },
-                { "message", "Switched to " + _resolvedAdapters.EthernetName + "." }
+                { "type", "UseEthernet" },
+                { "ethernetAdapter", _resolvedAdapters.EthernetName },
+                { "wifiAdapter", _resolvedAdapters.WiFiName },
+                { "alsoDisableOther", _userSettings.alsoDisableOtherAdapter },
+                { "message", "Now using " + _resolvedAdapters.EthernetName + "." }
             }))
             {
                 return;
             }
 
-            RecordHistory("Switch", _resolvedAdapters.EthernetName, source);
             Thread.Sleep(1200);
             RefreshAdapters();
         }
@@ -1207,24 +1178,18 @@ namespace EthernetToggle
                 return;
             }
 
-            var disableList = new List<string>();
-            if (_resolvedAdapters.EthernetName != null)
-            {
-                disableList.Add(_resolvedAdapters.EthernetName);
-            }
-
             if (!TryQueueOperation(new Dictionary<string, object>
             {
-                { "type", "Switch" },
-                { "enable", new[] { _resolvedAdapters.WiFiName } },
-                { "disable", disableList.ToArray() },
-                { "message", "Switched to " + _resolvedAdapters.WiFiName + "." }
+                { "type", "UseWifi" },
+                { "wifiAdapter", _resolvedAdapters.WiFiName },
+                { "ethernetAdapter", _resolvedAdapters.EthernetName },
+                { "alsoDisableOther", false },
+                { "message", "Now using " + _resolvedAdapters.WiFiName + "." }
             }))
             {
                 return;
             }
 
-            RecordHistory("Switch", _resolvedAdapters.WiFiName, source);
             Thread.Sleep(1200);
             RefreshAdapters();
         }
@@ -1239,207 +1204,6 @@ namespace EthernetToggle
             SwitchToWifi("UI");
         }
 
-        private void ToggleEthernetAdapter(string source)
-        {
-            if (_resolvedAdapters.Ethernet == null)
-            {
-                return;
-            }
-
-            RunAdapterAction(_resolvedAdapters.Ethernet.IsEnabled ? "Disable" : "Enable", _resolvedAdapters.Ethernet.Name, source);
-        }
-
-        private void ApplyProfile(NetworkProfile profile, string source)
-        {
-            if (profile == null)
-            {
-                return;
-            }
-
-            var items = new List<Dictionary<string, object>>();
-            foreach (var adapter in profile.adapters)
-            {
-                try
-                {
-                    AdapterNameValidator.ValidateOrThrow(adapter.name);
-                }
-                catch
-                {
-                    continue;
-                }
-
-                items.Add(new Dictionary<string, object>
-                {
-                    { "adapter", adapter.name },
-                    { "action", adapter.enabled ? "Enable" : "Disable" }
-                });
-            }
-
-            if (!TryQueueOperation(new Dictionary<string, object>
-            {
-                { "type", "Batch" },
-                { "items", items.ToArray() },
-                { "message", "Applied profile: " + profile.name }
-            }))
-            {
-                return;
-            }
-
-            RecordHistory("Profile", profile.name, source);
-            Thread.Sleep(1200);
-            RefreshAdapters();
-        }
-
-        private void ApplyProfileByIndex(int index, string source)
-        {
-            if (!_isProEdition || _proStore == null)
-            {
-                return;
-            }
-
-            var profile = _proStore.GetProfileByIndex(index);
-            if (profile != null)
-            {
-                ApplyProfile(profile, source);
-            }
-        }
-
-        private void RecordHistory(string action, string detail, string source)
-        {
-            if (!_isProEdition || _proStore == null || !EditionService.CanUseFeature(Feature.ConnectionHistory))
-            {
-                return;
-            }
-
-            _proStore.AddHistory(action, detail, source);
-        }
-
-        private List<NetworkAdapterSnapshot> GetAdapterSnapshots()
-        {
-            return AdapterHelper.GetAdapters(_config, includeVirtual: false)
-                .Select(a => new NetworkAdapterSnapshot
-                {
-                    Name = a.Name,
-                    IsEnabled = a.IsEnabled,
-                    IsConnected = a.IsConnected
-                })
-                .ToList();
-        }
-
-        private void EvaluateAutomation()
-        {
-            if (!_isProEdition || _automation == null || _proStore == null)
-            {
-                return;
-            }
-
-            if (AdapterOperationQueue.IsOperationInFlight() || AdapterOperationQueue.IsAutomationCooldownActive())
-            {
-                return;
-            }
-
-            if (!EditionService.CanUseFeature(Feature.AutomaticFailover) &&
-                !EditionService.CanUseFeature(Feature.PerAdapterRules) &&
-                !EditionService.CanUseFeature(Feature.Schedules))
-            {
-                return;
-            }
-
-            if (!_setupComplete)
-            {
-                return;
-            }
-
-            var result = _automation.Evaluate(GetAdapterSnapshots(), DateTime.Now);
-            if (result.IsNone)
-            {
-                return;
-            }
-
-            switch (result.Action)
-            {
-                case AutomationAction.SwitchEthernet:
-                    SwitchToEthernet("Automation");
-                    break;
-                case AutomationAction.SwitchWifi:
-                    SwitchToWifi("Automation");
-                    break;
-                case AutomationAction.DisableWifi:
-                    if (_resolvedAdapters.WiFiName != null)
-                    {
-                        RunAdapterAction("Disable", _resolvedAdapters.WiFiName, "Rule");
-                    }
-                    break;
-                case AutomationAction.DisableEthernet:
-                    if (_resolvedAdapters.EthernetName != null)
-                    {
-                        RunAdapterAction("Disable", _resolvedAdapters.EthernetName, "Rule");
-                    }
-                    break;
-                case AutomationAction.ApplyProfile:
-                    var profile = _proStore.GetProfileById(result.ProfileId);
-                    if (profile != null)
-                    {
-                        ApplyProfile(profile, "Schedule");
-                    }
-                    break;
-            }
-        }
-
-        private void OnHotkeyActionRequested(string actionName)
-        {
-            switch (actionName)
-            {
-                case "SwitchEthernet":
-                    SwitchToEthernet("Hotkey");
-                    break;
-                case "SwitchWifi":
-                    SwitchToWifi("Hotkey");
-                    break;
-                case "ToggleEthernet":
-                    ToggleEthernetAdapter("Hotkey");
-                    break;
-                case "ApplyProfile1":
-                    ApplyProfileByIndex(0, "Hotkey");
-                    break;
-                case "ApplyProfile2":
-                    ApplyProfileByIndex(1, "Hotkey");
-                    break;
-            }
-        }
-
-        private void RefreshTrayProfileMenu(ToolStripMenuItem profilesMenu)
-        {
-            profilesMenu.DropDownItems.Clear();
-            if (_proStore == null)
-            {
-                profilesMenu.Enabled = false;
-                return;
-            }
-
-            if (_proStore.Profiles.profiles.Count == 0)
-            {
-                profilesMenu.Enabled = false;
-                return;
-            }
-
-            profilesMenu.Enabled = true;
-            foreach (var profile in _proStore.Profiles.profiles)
-            {
-                var item = new ToolStripMenuItem(profile.name);
-                item.Click += (s, e) => ApplyProfile(profile, "Tray");
-                profilesMenu.DropDownItems.Add(item);
-            }
-        }
-
-        private void ShowProfilesDialog()
-        {
-            using (var form = new ProfilesForm(_proStore, GetAdapterSnapshots, profile => ApplyProfile(profile, "Profiles")))
-            {
-                form.ShowDialog(_form);
-            }
-        }
-
         private void ShowMainWindow()
         {
             _form.Show();
@@ -1449,21 +1213,6 @@ namespace EthernetToggle
 
         private void ShowSettingsDialog()
         {
-            if (_isProEdition && EditionService.CanUseFeature(Feature.ImportExportConfig))
-            {
-                using (var settingsForm = new ProSettingsForm(
-                    _proStore,
-                    _userSettings,
-                    SaveUserSettings,
-                    () => _hotkeyService.RegisterAll(true),
-                    _productVersion.GetDisplayVersion(),
-                    _config.appName))
-                {
-                    settingsForm.ShowDialog(_form);
-                }
-                return;
-            }
-
             using (var settingsForm = new SettingsForm(_userSettings, SaveUserSettings, _config.appName))
             {
                 settingsForm.ShowDialog(_form);
@@ -1478,38 +1227,11 @@ namespace EthernetToggle
             }
         }
 
-        private void ShowProFeature(Feature feature)
-        {
-            if (!EditionService.CanUseFeature(feature))
-            {
-                using (var upgrade = new UpgradeDialog(_repoRoot, feature))
-                {
-                    upgrade.ShowDialog(_form);
-                }
-                return;
-            }
-
-            switch (feature)
-            {
-                case Feature.MultipleProfiles:
-                    ShowProfilesDialog();
-                    break;
-                case Feature.ConnectionHistory:
-                    using (var history = new HistoryForm(_proStore))
-                    {
-                        history.ShowDialog(_form);
-                    }
-                    break;
-                default:
-                    ShowSettingsDialog();
-                    break;
-            }
-        }
-
         private void SaveUserSettings(UserSettings settings)
         {
             _userSettings.launchAtStartup = settings.launchAtStartup;
             _userSettings.startMinimizedToTray = settings.startMinimizedToTray;
+            _userSettings.alsoDisableOtherAdapter = settings.alsoDisableOtherAdapter;
             _userSettings.Save(_settingsPath);
             StartupShortcutHelper.ApplyLaunchAtStartup(_userSettings.launchAtStartup, _config, _exePath, _repoRoot);
         }
@@ -1523,7 +1245,6 @@ namespace EthernetToggle
             }
 
             RefreshAdapters();
-            EvaluateAutomation();
         }
 
         private void SetTrayIcon(IList<NetworkAdapterInfo> adapters)
@@ -1593,12 +1314,6 @@ namespace EthernetToggle
             {
                 _wifiHotkey.Dispose();
                 _wifiHotkey = null;
-            }
-
-            if (_hotkeyService != null)
-            {
-                _hotkeyService.Dispose();
-                _hotkeyService = null;
             }
 
             _timer.Stop();

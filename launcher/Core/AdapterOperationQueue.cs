@@ -13,8 +13,8 @@ namespace EthernetToggle.Core
         private const string QueueFileName = "pending-action-queue.json";
         private const string LockFileName = "operation.lock";
         private const string LegacyFileName = "pending-action.json";
-        private const int DebounceMilliseconds = 450;
-        private const int StaleLockSeconds = 120;
+        private const int DebounceMilliseconds = 1200;
+        private const int StaleLockSeconds = 30;
 
         private static readonly object SyncRoot = new object();
         private static DateTime _lastEnqueueUtc = DateTime.MinValue;
@@ -36,6 +36,8 @@ namespace EthernetToggle.Core
             }
 
             ClearStaleLock(actionDir);
+            ClearLockOnStartup(actionDir);
+            ResetInFlightState();
             MigrateLegacyPendingFile(actionDir);
             ClearLegacyPendingFile(actionDir);
 
@@ -64,10 +66,15 @@ namespace EthernetToggle.Core
 
             var actionDir = GetActionDirectory();
             var lockPath = Path.Combine(actionDir, LockFileName);
-            if (File.Exists(lockPath) && !IsLockStale(lockPath))
+            if (File.Exists(lockPath))
             {
-                errorMessage = "Adapter operation in progress. Please wait.";
-                return false;
+                if (!IsLockStale(lockPath) && IsLockActivelyHeld(lockPath))
+                {
+                    errorMessage = "Adapter operation in progress. Please wait.";
+                    return false;
+                }
+
+                ClearLockOnStartup(actionDir);
             }
 
             lock (SyncRoot)
@@ -87,6 +94,11 @@ namespace EthernetToggle.Core
         public static void MarkManualOperation()
         {
             _lastEnqueueUtc = DateTime.UtcNow;
+        }
+
+        public static void ResetInFlightState()
+        {
+            _operationInFlight = false;
         }
 
         public static bool IsOperationInFlight()
@@ -180,6 +192,35 @@ namespace EthernetToggle.Core
             if (File.Exists(legacyPath))
             {
                 try { File.Delete(legacyPath); } catch { }
+            }
+        }
+
+        private static void ClearLockOnStartup(string actionDir)
+        {
+            var lockPath = Path.Combine(actionDir, LockFileName);
+            if (File.Exists(lockPath))
+            {
+                try
+                {
+                    File.Delete(lockPath);
+                    ReliabilityLog("Recovery", "Cleared operation.lock on startup/reset");
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static bool IsLockActivelyHeld(string lockPath)
+        {
+            try
+            {
+                var ageSeconds = (DateTime.UtcNow - File.GetLastWriteTimeUtc(lockPath)).TotalSeconds;
+                return ageSeconds < 15;
+            }
+            catch
+            {
+                return false;
             }
         }
 

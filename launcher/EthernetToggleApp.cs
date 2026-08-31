@@ -1072,7 +1072,6 @@ namespace EthernetToggle
                 return false;
             }
 
-            AdapterOperationQueue.MarkManualOperation();
             string error;
             if (!AdapterOperationQueue.TryEnqueue(_config.taskName, payload, out error))
             {
@@ -1083,6 +1082,7 @@ namespace EthernetToggle
                 return false;
             }
 
+            AdapterOperationQueue.MarkManualOperation();
             return true;
         }
 

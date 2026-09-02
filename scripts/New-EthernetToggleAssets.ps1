@@ -132,9 +132,15 @@ function Save-IconFromBitmap {
     $memoryStream.Dispose()
 }
 
+$tempLogo = Join-Path $assetsDir 'logo.build.tmp.png'
+$tempIcon = Join-Path $assetsDir 'icon.build.tmp.ico'
 $logoBitmap = New-LinkPriorityBitmap -Size 256
-$logoBitmap.Save($logoPath, [System.Drawing.Imaging.ImageFormat]::Png)
-Save-IconFromBitmap -SourceBitmap $logoBitmap -DestinationPath $iconPath -Sizes @(16, 32, 48, 256)
+$logoBitmap.Save($tempLogo, [System.Drawing.Imaging.ImageFormat]::Png)
+if (Test-Path $logoPath) { Remove-Item $logoPath -Force }
+Move-Item $tempLogo $logoPath -Force
+Save-IconFromBitmap -SourceBitmap $logoBitmap -DestinationPath $tempIcon -Sizes @(16, 32, 48, 256)
+if (Test-Path $iconPath) { Remove-Item $iconPath -Force }
+Move-Item $tempIcon $iconPath -Force
 $logoBitmap.Dispose()
 
 Write-Host "Created $logoPath"

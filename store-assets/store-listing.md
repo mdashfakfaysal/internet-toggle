@@ -1,84 +1,53 @@
-# Store Listing — Internet Switcher
+# Store Listing — Link Priority
 
-## Product Name
+## Product name (display)
 
-**Internet Switcher**
+**Link Priority**
 
-Paid product: **Internet Switcher Pro**
+Store identity (unchanged): `ITDoctor360.InternetSwitcher`
 
-## Short Description
+## Short description
 
-Instantly switch between Wi-Fi and Ethernet on Windows — from your system tray.
+Control which connection Windows uses. Toggle your Ethernet adapter on or off; Wi-Fi stays enabled.
 
-## Full Description
+## Long description
 
-Dorm Wi-Fi acting up? Need to jump to your phone hotspot? **Internet Switcher** gives you one-click control over your Windows network adapters.
+**Link Priority** lets you choose whether Windows routes traffic over Wi-Fi or Ethernet — without pretending to turn Wi-Fi off.
 
-Enable or disable Wi-Fi and Ethernet individually, or use quick-switch presets to move between connections instantly. The app runs in your system tray, starts minimized at login, and works without repeated administrator prompts after a one-time setup.
+**How it works (default behavior):**
 
-**Lightweight. No ads. No telemetry. No speed-up claims — just reliable adapter control.**
+- **Prioritize Wi-Fi** — enables your Wi-Fi adapter and disables Ethernet so wireless takes over.
+- **Prioritize Ethernet** — enables Ethernet and disconnects active Wi-Fi sessions (`netsh wlan disconnect`). Your Wi-Fi adapter remains enabled; Windows prefers the wired connection when it is up.
 
-### Supported Windows Versions
+This is honest Ethernet-adapter priority control, not a Wi-Fi kill switch. An optional advanced setting can also disable the Wi-Fi adapter when prioritizing Ethernet (off by default).
 
-- Windows 10 (64-bit)
-- Windows 11 (64-bit)
+**Features:**
 
-## Free Feature List
+- One-click Prioritize Wi-Fi / Prioritize Ethernet
+- Per-adapter enable/disable list with live status
+- System tray quick actions
+- Auto-detects adapters (Realtek, MediaTek, USB Ethernet, etc.)
+- Safe rollback if a change fails
+- No telemetry, no ads
 
-- Enable / disable network adapters individually
-- Switch to Ethernet / Switch to Wi-Fi presets
-- Live adapter status (Connected, Disconnected, Disabled)
-- System tray with quick actions
-- Launch at Windows startup
-- Start minimized to tray
-- Basic hotkey (Ctrl+Alt+W → Switch to Wi-Fi)
-- Manual refresh
+**Setup:** One-time administrator approval registers a scheduled task for adapter changes. After that, no repeated prompts.
 
-## Pro Feature List
-
-- Multiple saved network profiles
-- Network priority configuration
-- Automatic Ethernet ↔ Wi-Fi failover
-- Advanced hotkeys
-- Schedules and connection rules
-- Per-adapter automation rules
-- Import / export configuration
-- Connection status history
-- Optional diagnostic logs
-- CLI commands (planned)
-- Advanced tray actions
-
-## What's New (1.0.0)
-
-- Initial commercial-ready release
-- Internet Switcher Free and Pro editions
-- Settings panel and tray-only startup
-- Improved status labels and UI layout
+**Publisher:** IT Doctor 360
 
 ## Keywords
 
-network, ethernet, wifi, adapter, switch, toggle, tray, windows, dorm, hotspot, internet
+ethernet, wifi, network, adapter, priority, route, switch, tray, wired, wireless
 
-## Support Description
+## Privacy
 
-For help, visit the GitHub repository issues page or the support URL configured in Partner Center.
+Settings stored locally only. No browsing history, passwords, or traffic collection. See in-app privacy policy URL.
 
-## Privacy Policy Summary
+## Age rating
 
-Internet Switcher stores settings locally on your PC. It does not collect browsing history, Wi-Fi passwords, or network traffic. See the full privacy policy URL submitted with the Store listing.
+Everyone / General audience — system utility, no restricted content.
 
-## Certification Notes
+## Screenshot captions
 
-- App requires one-time administrator approval during install to register a scheduled task for adapter management
-- After install, adapter changes do not show repeated UAC prompts
-- App does not modify unrelated system settings
-- No bundled software or advertising
-
-## Placeholders Requiring Publisher Input
-
-| Field | Status |
-|-------|--------|
-| Support URL | `[TO BE PROVIDED]` |
-| Privacy URL | `[TO BE PROVIDED]` |
-| Website | `[TO BE PROVIDED]` |
-| Publisher display name | `[TO BE PROVIDED]` |
+1. Main window — Prioritize Wi-Fi / Prioritize Ethernet buttons and adapter status
+2. Tray menu — quick priority actions
+3. Settings — startup options and advanced Wi-Fi disable (off by default)

@@ -26,8 +26,8 @@ function Get-EthernetToggleConfig {
         ethernetAdapterName = 'Ethernet'
         wifiAdapterName     = 'Wi-Fi'
         taskName            = 'ToggleInternetAdapter'
-        appName             = 'Internet Toggle'
-        exeName             = 'Internet Toggle'
+        appName             = 'Link Priority'
+        exeName             = 'Internet Switcher'
         excludePatterns     = @('vEthernet', 'Hyper-V')
     }
 
@@ -279,7 +279,7 @@ function ConvertFrom-QueuePayload {
             WiFiAdapter      = if ($Payload.wifiAdapter) { [string]$Payload.wifiAdapter } else { $null }
             EthernetAdapter  = if ($Payload.ethernetAdapter) { [string]$Payload.ethernetAdapter } else { $null }
             AlsoDisableOther = [bool]$Payload.alsoDisableOther
-            Message          = if ($Payload.message) { [string]$Payload.message } else { 'Now using Wi-Fi.' }
+            Message          = if ($Payload.message) { [string]$Payload.message } else { 'Wi-Fi prioritized.' }
         }
     }
 
@@ -289,7 +289,7 @@ function ConvertFrom-QueuePayload {
             WiFiAdapter      = if ($Payload.wifiAdapter) { [string]$Payload.wifiAdapter } else { $null }
             EthernetAdapter  = if ($Payload.ethernetAdapter) { [string]$Payload.ethernetAdapter } else { $null }
             AlsoDisableOther = [bool]$Payload.alsoDisableOther
-            Message          = if ($Payload.message) { [string]$Payload.message } else { 'Now using Ethernet.' }
+            Message          = if ($Payload.message) { [string]$Payload.message } else { 'Ethernet prioritized.' }
         }
     }
 
@@ -625,7 +625,7 @@ function Invoke-UseWifi {
 
     $wifi = Get-NetAdapter -Name $wifiName -ErrorAction SilentlyContinue
     if ($wifi -and $wifi.AdminStatus -eq 'Up') {
-        Show-EthernetToggleToast -Title 'Using Wi-Fi' -Message ($Request.Message)
+        Show-EthernetToggleToast -Title 'Wi-Fi prioritized' -Message ($Request.Message)
         return
     }
 
@@ -663,7 +663,7 @@ function Invoke-UseEthernet {
         }
     }
 
-    Show-EthernetToggleToast -Title 'Using Ethernet' -Message ($Request.Message)
+    Show-EthernetToggleToast -Title 'Ethernet prioritized' -Message ($Request.Message)
 }
 
 function Invoke-NetworkToggleRequest {

@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6+ — https://jrsoftware.org/isinfo.php
 ; DO NOT generate fake signatures. Sign output EXE before commercial release.
 
-#define AppName "Internet Switcher"
+#define AppName "Link Priority"
 #define AppVersion "1.0.0"
 #define AppPublisher "[TO BE PROVIDED]"
 #define AppURL "https://github.com/mdashfakfaysal/internet-toggle"

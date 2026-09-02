@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0 — 2026-09-03
+
+**Rebrand:** Outward-facing identity renamed to **Link Priority** with honest copy describing Ethernet-adapter priority control (Wi-Fi adapter stays on by default). New icon/logo. No functional or adapter-control logic changes. Store identity `ITDoctor360.InternetSwitcher` unchanged.
+
 ## 2.0.0 — 2026-08-31
 
 **Breaking simplification:** single edition, safe switching strategy, Pro features removed from build.

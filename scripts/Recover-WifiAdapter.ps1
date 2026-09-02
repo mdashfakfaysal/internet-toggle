@@ -16,7 +16,7 @@ Initialize-EthernetToggleState -ActionDir (Join-Path $env:LOCALAPPDATA 'Internet
 $instanceId = 'PCI\VEN_14C3&DEV_7925&SUBSYS_E138105B&REV_00\6&3A12B95&0&00580011'
 $interfaceDescription = 'MediaTek Wi-Fi 7 MT7925 Wireless LAN Card'
 
-Write-Host 'Internet Switcher - Wi-Fi recovery (Ethernet will NOT be disabled)' -ForegroundColor Cyan
+Write-Host 'Link Priority - Wi-Fi recovery (Ethernet will NOT be disabled)' -ForegroundColor Cyan
 
 $eth = Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceDescription -match 'Realtek' -and $_.Status -eq 'Up' } | Select-Object -First 1
 if ($eth) {

@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "appName": "Internet Switcher",
+  "appName": "Link Priority",
   "exeName": "Internet Switcher",
   "taskName": "ToggleInternetAdapter",
   "adapterName": "Ethernet",

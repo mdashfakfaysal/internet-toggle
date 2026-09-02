@@ -1,10 +1,10 @@
 # Privacy Policy
 
-**Internet Switcher** · Last updated: 2026-08-28
+**Link Priority** · Last updated: 2026-09-03
 
 ## Summary
 
-Internet Switcher is a local Windows utility. It does **not** collect browsing history, network credentials, Wi-Fi passwords, or packet contents.
+Link Priority is a local Windows utility. It does **not** collect browsing history, network credentials, Wi-Fi passwords, or packet contents.
 
 ## Data Stored Locally
 

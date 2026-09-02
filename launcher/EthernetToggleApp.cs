@@ -69,8 +69,8 @@ namespace EthernetToggle
                 ethernetAdapterName = "Ethernet",
                 wifiAdapterName = "Wi-Fi",
                 taskName = "ToggleInternetAdapter",
-                appName = "Internet Toggle",
-                exeName = "Internet Toggle",
+                appName = "Link Priority",
+                exeName = "Internet Switcher",
                 excludePatterns = new[] { "vEthernet", "Hyper-V" },
                 launchAtStartup = false,
                 startMinimizedToTray = true
@@ -144,7 +144,7 @@ namespace EthernetToggle
 
             if (enabled)
             {
-                CreateShortcut(shortcutPath, exePath, workingDirectory, config.appName + " - internet adapter control", exePath + ",0");
+                CreateShortcut(shortcutPath, exePath, workingDirectory, config.appName + " - network priority control", exePath + ",0");
                 return;
             }
 
@@ -458,9 +458,9 @@ namespace EthernetToggle
                 Location = new Point(20, 162)
             };
 
-            _alsoDisableCheck = CreateSettingCheckBox("When using Ethernet, also disable the Wi-Fi adapter", 194, settings.alsoDisableOtherAdapter);
+            _alsoDisableCheck = CreateSettingCheckBox("When prioritizing Ethernet, also disable the Wi-Fi adapter", 194, settings.alsoDisableOtherAdapter);
             var alsoDisableDescription = CreateDescriptionLabel(
-                "Off by default. Safer mode disconnects Wi-Fi without disabling its driver.",
+                "Off by default. Normally only the Ethernet adapter is toggled; Wi-Fi stays enabled and active Wi-Fi sessions are disconnected.",
                 216,
                 400);
 
@@ -670,7 +670,7 @@ namespace EthernetToggle
 
             var subtitleLabel = new Label
             {
-                Text = "Simple Wi-Fi / Ethernet switch · v" + _productVersion.GetDisplayVersion(),
+                Text = "Ethernet priority control · v" + _productVersion.GetDisplayVersion(),
                 Font = new Font("Segoe UI", 9f),
                 ForeColor = Color.FromArgb(170, 170, 170),
                 Dock = DockStyle.Fill,
@@ -714,9 +714,9 @@ namespace EthernetToggle
             quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
             quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
 
-            var ethernetButton = CreateQuickButton("Use Ethernet");
+            var ethernetButton = CreateQuickButton("Prioritize Ethernet");
             ethernetButton.Click += (s, e) => SwitchToEthernet();
-            var wifiButton = CreateQuickButton("Use Wi-Fi");
+            var wifiButton = CreateQuickButton("Prioritize Wi-Fi");
             wifiButton.Click += (s, e) => SwitchToWifi();
 
             ethernetButton.Margin = new Padding(0, 0, 4, 0);
@@ -759,7 +759,7 @@ namespace EthernetToggle
                 Dock = DockStyle.Bottom,
                 Height = 36,
                 Padding = new Padding(16, 6, 16, 12),
-                Text = "Close hides to tray · Ctrl+Alt+W switches to Wi-Fi · Right-click tray to exit",
+                Text = "Close hides to tray · Ctrl+Alt+W prioritizes Wi-Fi · Wi-Fi adapter stays on",
                 Font = new Font("Segoe UI", 8.25f),
                 ForeColor = Color.FromArgb(120, 120, 120),
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -855,8 +855,8 @@ namespace EthernetToggle
         {
             var menu = new ContextMenuStrip();
             var showItem = new ToolStripMenuItem("Show Window");
-            var ethItem = new ToolStripMenuItem("Use Ethernet");
-            var wifiItem = new ToolStripMenuItem("Use Wi-Fi");
+            var ethItem = new ToolStripMenuItem("Prioritize Ethernet");
+            var wifiItem = new ToolStripMenuItem("Prioritize Wi-Fi");
             var exitItem = new ToolStripMenuItem("Exit");
 
             showItem.Click += (s, e) => ShowMainWindow();
@@ -1047,7 +1047,7 @@ namespace EthernetToggle
                 ? FormatSummaryState(_resolvedAdapters.WiFi)
                 : "Not found";
 
-            _summaryLabel.Text = "Ethernet (" + ethLabel + "): " + ethText + "   |   Wi-Fi (" + wifiLabel + "): " + wifiText;
+            _summaryLabel.Text = "Ethernet (" + ethLabel + "): " + ethText + "   |   Wi-Fi (" + wifiLabel + "): " + wifiText + " (adapter stays on)";
             _notifyIcon.Text = _config.appName + " · Eth: " + ethText + ", Wi-Fi: " + wifiText;
         }
 
@@ -1160,7 +1160,7 @@ namespace EthernetToggle
                 { "ethernetAdapter", _resolvedAdapters.EthernetName },
                 { "wifiAdapter", _resolvedAdapters.WiFiName },
                 { "alsoDisableOther", _userSettings.alsoDisableOtherAdapter },
-                { "message", "Now using " + _resolvedAdapters.EthernetName + "." }
+                { "message", "Ethernet prioritized." }
             }))
             {
                 return;
@@ -1184,7 +1184,7 @@ namespace EthernetToggle
                 { "wifiAdapter", _resolvedAdapters.WiFiName },
                 { "ethernetAdapter", _resolvedAdapters.EthernetName },
                 { "alsoDisableOther", false },
-                { "message", "Now using " + _resolvedAdapters.WiFiName + "." }
+                { "message", "Wi-Fi prioritized." }
             }))
             {
                 return;
@@ -1389,7 +1389,7 @@ namespace EthernetToggle
                 {
                 }
 
-                MessageBox.Show(ex.ToString(), "Internet Toggle Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.ToString(), "Link Priority Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

@@ -49,11 +49,11 @@ namespace EthernetToggle.UI
 
             var body = new Label
             {
-                Text = "Switch between Wi-Fi and Ethernet, and control network adapters on Windows.",
+                Text = "Controls which connection Windows uses by toggling your Ethernet adapter. Prioritize Wi-Fi disables Ethernet (Wi-Fi stays on). Prioritize Ethernet enables Ethernet and disconnects active Wi-Fi sessions without disabling the Wi-Fi adapter.",
                 Font = new Font("Segoe UI", 9f),
                 ForeColor = Color.FromArgb(190, 190, 190),
                 AutoSize = false,
-                Size = new Size(380, 40),
+                Size = new Size(380, 72),
                 Location = new Point(22, 108)
             };
 

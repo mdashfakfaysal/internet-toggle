@@ -42,8 +42,8 @@ namespace EthernetToggle.Core
         public static bool PromptAndRegister(IWin32Window owner, string repoRoot, string taskName)
         {
             var message =
-                "Internet Switcher needs a one-time Windows administrator setup to enable or disable network adapters.\n\n" +
-                "Click Yes to approve the UAC prompt. After setup, switching works without repeated prompts.\n\n" +
+                "Link Priority needs a one-time Windows administrator setup to enable or disable your Ethernet adapter.\n\n" +
+                "Click Yes to approve the UAC prompt. After setup, priority changes work without repeated prompts.\n\n" +
                 "This is required for Microsoft Store and fresh installs.";
 
             var result = MessageBox.Show(

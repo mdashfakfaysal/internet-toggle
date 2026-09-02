@@ -44,13 +44,13 @@ namespace EthernetToggle.Core
         {
             return new AppVersionInfo
             {
-                productName = "Internet Switcher",
-                freeDisplayName = "Internet Switcher Free",
-                proDisplayName = "Internet Switcher Pro",
-                version = "1.0.0",
-                assemblyVersion = "1.0.0.0",
-                fileVersion = "1.0.0.0",
-                company = "Internet Switcher",
+                productName = "Link Priority",
+                freeDisplayName = "Link Priority",
+                proDisplayName = "Link Priority",
+                version = "2.1.0",
+                assemblyVersion = "2.1.0.0",
+                fileVersion = "2.1.0.0",
+                company = "IT Doctor 360",
                 copyright = "Copyright (c) 2026",
                 githubRepo = "https://github.com/mdashfakfaysal/internet-toggle"
             };

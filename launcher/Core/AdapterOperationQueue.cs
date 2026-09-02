@@ -84,11 +84,42 @@ namespace EthernetToggle.Core
                 _operationInFlight = true;
             }
 
-            TriggerScheduledTask(taskName);
             ReliabilityLog("Enqueue", new JavaScriptSerializer().Serialize(payload));
 
             ThreadPool.QueueUserWorkItem(_ => WaitForOperationComplete(actionDir));
             return true;
+        }
+
+        public static bool DispatchExecution(string taskName, string repoRoot, out string errorDetail)
+        {
+            return ElevatedOperationHelper.DispatchExecution(taskName, repoRoot, out errorDetail);
+        }
+
+        public static void WaitForCompletionBlocking(int timeoutSeconds)
+        {
+            var actionDir = GetActionDirectory();
+            var lockPath = Path.Combine(actionDir, LockFileName);
+            var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+
+            while (DateTime.UtcNow < deadline)
+            {
+                if (!_operationInFlight)
+                {
+                    return;
+                }
+
+                if (!File.Exists(lockPath) || IsLockStale(lockPath))
+                {
+                    _operationInFlight = false;
+                    return;
+                }
+
+                Thread.Sleep(200);
+            }
+
+            ClearStaleLock(actionDir);
+            _operationInFlight = false;
+            ReliabilityLog("Timeout", "Blocking wait for operation completion timed out");
         }
 
         public static void MarkManualOperation()
@@ -282,18 +313,6 @@ namespace EthernetToggle.Core
             {
                 return false;
             }
-        }
-
-        private static void TriggerScheduledTask(string taskName)
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "schtasks.exe",
-                Arguments = "/Run /TN \"" + taskName + "\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            });
         }
 
         private static void ReliabilityLog(string category, string detail)

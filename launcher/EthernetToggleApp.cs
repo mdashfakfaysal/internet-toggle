@@ -460,7 +460,7 @@ namespace EthernetToggle
 
             _alsoDisableCheck = CreateSettingCheckBox("When prioritizing Ethernet, also disable the Wi-Fi adapter", 194, settings.alsoDisableOtherAdapter);
             var alsoDisableDescription = CreateDescriptionLabel(
-                "Off by default. Normally only the Ethernet adapter is toggled; Wi-Fi stays enabled and active Wi-Fi sessions are disconnected.",
+                "Off by default. Prioritize Ethernet enables Ethernet and disconnects active Wi-Fi sessions. Optionally also disable the Wi-Fi adapter.",
                 216,
                 400);
 
@@ -548,12 +548,15 @@ namespace EthernetToggle
         private readonly Form _form;
         private readonly FlowLayoutPanel _adapterList;
         private readonly Label _summaryLabel;
+        private readonly Label _lastResultLabel;
+        private readonly Button _ethernetToggleButton;
+        private readonly ToolStripMenuItem _trayToggleItem;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly AppVersionInfo _productVersion;
-        private GlobalHotkey _wifiHotkey;
         private Bitmap _heldBitmap;
         private IntPtr _iconHandle = IntPtr.Zero;
         private bool _isClosing;
+        private bool _operationUiBusy;
         private ResolvedAdapters _resolvedAdapters = new ResolvedAdapters();
         private bool _setupComplete;
 
@@ -573,11 +576,10 @@ namespace EthernetToggle
             AdapterOperationQueue.RecoverOnStartup(_config.taskName);
             _setupComplete = ElevatedSetupHelper.IsTaskRegistered(_config.taskName);
 
-            _form = BuildForm(out _adapterList, out _summaryLabel);
+            _form = BuildForm(out _adapterList, out _summaryLabel, out _ethernetToggleButton, out _lastResultLabel);
             MainForm = _form;
             _adapterList.Resize += (s, e) => ResizeAdapterRows();
-            _notifyIcon = BuildNotifyIcon();
-            RegisterBasicHotkey();
+            _notifyIcon = BuildNotifyIcon(out _trayToggleItem);
 
             _timer = new System.Windows.Forms.Timer { Interval = 3000 };
             _timer.Tick += OnTimerTick;
@@ -591,19 +593,7 @@ namespace EthernetToggle
             }
         }
 
-        private void RegisterBasicHotkey()
-        {
-            try
-            {
-                _wifiHotkey = new GlobalHotkey(_form, 1, Keys.W, 0x0001 | 0x0002);
-                _wifiHotkey.HotkeyPressed += (s, e) => SwitchToWifi();
-            }
-            catch
-            {
-            }
-        }
-
-        private Form BuildForm(out FlowLayoutPanel adapterList, out Label summaryLabel)
+        private Form BuildForm(out FlowLayoutPanel adapterList, out Label summaryLabel, out Button ethernetToggleButton, out Label lastResultLabel)
         {
             var windowTitle = _productVersion.productName + " " + _productVersion.GetDisplayVersion();
             var form = new Form
@@ -670,7 +660,7 @@ namespace EthernetToggle
 
             var subtitleLabel = new Label
             {
-                Text = "Ethernet priority control · v" + _productVersion.GetDisplayVersion(),
+                Text = "Enable or disable Ethernet · v" + _productVersion.GetDisplayVersion(),
                 Font = new Font("Segoe UI", 9f),
                 ForeColor = Color.FromArgb(170, 170, 170),
                 Dock = DockStyle.Fill,
@@ -702,27 +692,18 @@ namespace EthernetToggle
             headerPanel.Controls.Add(titlePanel, 1, 0);
             headerPanel.Controls.Add(headerActionsPanel, 2, 0);
 
-            var quickPanel = new TableLayoutPanel
+            var togglePanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 72,
-                Padding = new Padding(16, 10, 16, 10),
-                BackColor = Color.FromArgb(30, 30, 30),
-                ColumnCount = 2,
-                RowCount = 1
+                Height = 88,
+                Padding = new Padding(16, 12, 16, 8),
+                BackColor = Color.FromArgb(30, 30, 30)
             };
-            quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
-            quickPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
 
-            var ethernetButton = CreateQuickButton("Prioritize Ethernet");
-            ethernetButton.Click += (s, e) => SwitchToEthernet();
-            var wifiButton = CreateQuickButton("Prioritize Wi-Fi");
-            wifiButton.Click += (s, e) => SwitchToWifi();
-
-            ethernetButton.Margin = new Padding(0, 0, 4, 0);
-            wifiButton.Margin = new Padding(4, 0, 0, 0);
-            quickPanel.Controls.Add(ethernetButton, 0, 0);
-            quickPanel.Controls.Add(wifiButton, 1, 0);
+            ethernetToggleButton = CreatePrimaryToggleButton("Disable Ethernet");
+            ethernetToggleButton.Dock = DockStyle.Fill;
+            ethernetToggleButton.Click += (s, e) => TogglePrimaryEthernet();
+            togglePanel.Controls.Add(ethernetToggleButton);
 
             summaryLabel = new Label
             {
@@ -733,6 +714,17 @@ namespace EthernetToggle
                 ForeColor = Color.FromArgb(180, 180, 180),
                 BackColor = Color.FromArgb(30, 30, 30),
                 Text = "Loading adapters..."
+            };
+
+            lastResultLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 28,
+                Padding = new Padding(16, 0, 16, 4),
+                Font = new Font("Segoe UI", 8.75f),
+                ForeColor = Color.FromArgb(140, 180, 220),
+                BackColor = Color.FromArgb(30, 30, 30),
+                Text = "Ready."
             };
 
             var listHost = new Panel
@@ -752,14 +744,26 @@ namespace EthernetToggle
                 Padding = new Padding(10, 8, 10, 8)
             };
 
+            var listHeader = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 24,
+                Text = "Detected adapters (informational)",
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Italic),
+                ForeColor = Color.FromArgb(130, 130, 130),
+                BackColor = Color.FromArgb(30, 30, 30),
+                Padding = new Padding(4, 0, 0, 4)
+            };
+
             listHost.Controls.Add(adapterList);
+            listHost.Controls.Add(listHeader);
 
             var hintLabel = new Label
             {
                 Dock = DockStyle.Bottom,
                 Height = 36,
                 Padding = new Padding(16, 6, 16, 12),
-                Text = "Close hides to tray · Ctrl+Alt+W prioritizes Wi-Fi · Wi-Fi adapter stays on",
+                Text = "Close hides to tray · One click toggles Ethernet · Windows may ask for admin approval once",
                 Font = new Font("Segoe UI", 8.25f),
                 ForeColor = Color.FromArgb(120, 120, 120),
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -767,8 +771,9 @@ namespace EthernetToggle
             };
 
             form.Controls.Add(listHost);
+            form.Controls.Add(lastResultLabel);
             form.Controls.Add(summaryLabel);
-            form.Controls.Add(quickPanel);
+            form.Controls.Add(togglePanel);
             form.Controls.Add(hintLabel);
             form.Controls.Add(headerPanel);
 
@@ -806,6 +811,22 @@ namespace EthernetToggle
                 Cursor = Cursors.Hand
             };
             button.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
+            return button;
+        }
+
+        private static Button CreatePrimaryToggleButton(string text)
+        {
+            var button = new Button
+            {
+                Text = text,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(70, 130, 220),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Height = 56
+            };
+            button.FlatAppearance.BorderSize = 0;
             return button;
         }
 
@@ -851,17 +872,15 @@ namespace EthernetToggle
             }
         }
 
-        private NotifyIcon BuildNotifyIcon()
+        private NotifyIcon BuildNotifyIcon(out ToolStripMenuItem trayToggleItem)
         {
             var menu = new ContextMenuStrip();
             var showItem = new ToolStripMenuItem("Show Window");
-            var ethItem = new ToolStripMenuItem("Prioritize Ethernet");
-            var wifiItem = new ToolStripMenuItem("Prioritize Wi-Fi");
+            trayToggleItem = new ToolStripMenuItem("Toggle Ethernet");
             var exitItem = new ToolStripMenuItem("Exit");
 
             showItem.Click += (s, e) => ShowMainWindow();
-            ethItem.Click += (s, e) => SwitchToEthernet();
-            wifiItem.Click += (s, e) => SwitchToWifi();
+            trayToggleItem.Click += (s, e) => TogglePrimaryEthernet();
             exitItem.Click += (s, e) =>
             {
                 _isClosing = true;
@@ -869,9 +888,8 @@ namespace EthernetToggle
             };
 
             menu.Items.Add(showItem);
-            menu.Items.Add(ethItem);
-            menu.Items.Add(wifiItem);
-
+            menu.Items.Add(trayToggleItem);
+            menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(exitItem);
 
             var notifyIcon = new NotifyIcon
@@ -894,20 +912,17 @@ namespace EthernetToggle
 
         private Control CreateAdapterRow(NetworkAdapterInfo adapter, int rowWidth)
         {
-            const int buttonColumnWidth = 84;
-
             var row = new TableLayoutPanel
             {
                 Width = rowWidth,
-                Height = 72,
-                ColumnCount = 2,
+                Height = 64,
+                ColumnCount = 1,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 0, 8),
                 BackColor = Color.FromArgb(45, 45, 45),
                 Padding = new Padding(12, 8, 12, 8)
             };
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, buttonColumnWidth));
 
             var infoPanel = new TableLayoutPanel
             {
@@ -956,32 +971,8 @@ namespace EthernetToggle
             infoPanel.Controls.Add(nameLabel, 0, 0);
             infoPanel.Controls.Add(statusLabel, 0, 1);
             infoPanel.Controls.Add(descLabel, 0, 2);
-
-            var buttonHost = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(45, 45, 45)
-            };
-
-            var toggleButton = new Button
-            {
-                Text = adapter.IsEnabled ? "Disable" : "Enable",
-                Size = new Size(76, 30),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(55, 55, 55),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 8.75f, FontStyle.Bold),
-                Anchor = AnchorStyles.None
-            };
-            toggleButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
-            toggleButton.Click += (s, e) => RunAdapterAction(adapter.IsEnabled ? "Disable" : "Enable", adapter.Name, "UI");
-
-            buttonHost.Controls.Add(toggleButton);
-            buttonHost.Resize += (s, e) => CenterControlInPanel(toggleButton, buttonHost);
-
             row.Controls.Add(infoPanel, 0, 0);
-            row.Controls.Add(buttonHost, 1, 0);
-            row.HandleCreated += (s, e) => CenterControlInPanel(toggleButton, buttonHost);
+
             return row;
         }
 
@@ -1033,6 +1024,7 @@ namespace EthernetToggle
 
             _adapterList.ResumeLayout();
             UpdateSummary(adapters);
+            UpdateEthernetToggleButton();
             SetTrayIcon(adapters);
         }
 
@@ -1047,50 +1039,199 @@ namespace EthernetToggle
                 ? FormatSummaryState(_resolvedAdapters.WiFi)
                 : "Not found";
 
-            _summaryLabel.Text = "Ethernet (" + ethLabel + "): " + ethText + "   |   Wi-Fi (" + wifiLabel + "): " + wifiText + " (adapter stays on)";
+            _summaryLabel.Text = "Ethernet (" + ethLabel + "): " + ethText + "   |   Wi-Fi (" + wifiLabel + "): " + wifiText;
             _notifyIcon.Text = _config.appName + " · Eth: " + ethText + ", Wi-Fi: " + wifiText;
+            UpdateEthernetToggleButton();
+            UpdateTrayToggleItem();
         }
 
-        private bool EnsureElevatedSetup()
+        private void UpdateEthernetToggleButton()
         {
-            if (_setupComplete && ElevatedSetupHelper.IsTaskRegistered(_config.taskName))
+            if (_ethernetToggleButton == null)
             {
-                return true;
+                return;
             }
 
-            if (ElevatedSetupHelper.PromptAndRegister(_form, _repoRoot, _config.taskName))
+            if (_operationUiBusy)
             {
-                _setupComplete = true;
-                return true;
+                return;
             }
 
-            MessageBox.Show(
-                _form,
-                "Setup was not completed. Switching adapters requires the one-time administrator setup.",
-                _config.appName,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-            return false;
+            var ethernet = _resolvedAdapters.Ethernet;
+            if (ethernet == null || !ethernet.IsPresent)
+            {
+                _ethernetToggleButton.Text = "No Ethernet adapter detected";
+                _ethernetToggleButton.Enabled = false;
+                _ethernetToggleButton.BackColor = Color.FromArgb(90, 90, 90);
+                return;
+            }
+
+            _ethernetToggleButton.Enabled = true;
+            _ethernetToggleButton.BackColor = Color.FromArgb(70, 130, 220);
+            _ethernetToggleButton.Text = ethernet.IsEnabled ? "Disable Ethernet" : "Enable Ethernet";
         }
 
-        private bool TryQueueOperation(object payload)
+        private void UpdateTrayToggleItem()
         {
-            if (!EnsureElevatedSetup())
+            if (_trayToggleItem == null)
             {
-                return false;
+                return;
             }
 
-            string error;
-            if (!AdapterOperationQueue.TryEnqueue(_config.taskName, payload, out error))
+            var ethernet = _resolvedAdapters.Ethernet;
+            if (ethernet == null || !ethernet.IsPresent)
             {
-                if (!string.IsNullOrEmpty(error))
+                _trayToggleItem.Text = "No Ethernet adapter detected";
+                _trayToggleItem.Enabled = false;
+                return;
+            }
+
+            _trayToggleItem.Enabled = !_operationUiBusy;
+            _trayToggleItem.Text = ethernet.IsEnabled ? "Disable Ethernet" : "Enable Ethernet";
+        }
+
+        private void SetOperationUiState(bool busy, string buttonText)
+        {
+            _operationUiBusy = busy;
+
+            if (busy)
+            {
+                _ethernetToggleButton.Enabled = false;
+                _ethernetToggleButton.Text = buttonText ?? "Working…";
+                _ethernetToggleButton.Cursor = Cursors.WaitCursor;
+            }
+            else
+            {
+                _ethernetToggleButton.Cursor = Cursors.Hand;
+            }
+
+            UpdateTrayToggleItem();
+        }
+
+        private void ReportOperationResult(bool success, string message, string actionVerb, bool suppressFailureDialog)
+        {
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            _lastResultLabel.Text = timestamp + " — " + message;
+            _lastResultLabel.ForeColor = success
+                ? Color.FromArgb(120, 200, 140)
+                : Color.FromArgb(240, 160, 120);
+
+            SetOperationUiState(false, null);
+            UpdateEthernetToggleButton();
+
+            if (success)
+            {
+                _notifyIcon.BalloonTipTitle = _config.appName;
+                _notifyIcon.BalloonTipText = message;
+                _notifyIcon.ShowBalloonTip(3000);
+            }
+            else if (!suppressFailureDialog)
+            {
+                MessageBox.Show(
+                    _form,
+                    message,
+                    _config.appName + " — " + actionVerb + " failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
+        private void TogglePrimaryEthernet()
+        {
+            if (_operationUiBusy)
+            {
+                _lastResultLabel.Text = DateTime.Now.ToString("HH:mm:ss") + " — Please wait for the current operation to finish.";
+                return;
+            }
+
+            var ethernet = _resolvedAdapters.Ethernet;
+            if (ethernet == null || !ethernet.IsPresent)
+            {
+                MessageBox.Show(
+                    _form,
+                    "No Ethernet adapter was detected on this PC.\n\n" +
+                    "If your device has no built-in Ethernet port, connect a USB Ethernet adapter (for example ASIX AX88772B) and reopen the app.",
+                    _config.appName,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                UpdateEthernetToggleButton();
+                return;
+            }
+
+            var action = ethernet.IsEnabled ? "Disable" : "Enable";
+            var busyText = action + "ing Ethernet…";
+            var successText = action == "Enable"
+                ? "Ethernet enabled."
+                : "Ethernet disabled.";
+
+            SetOperationUiState(true, busyText);
+            _lastResultLabel.Text = DateTime.Now.ToString("HH:mm:ss") + " — " + busyText;
+            _lastResultLabel.ForeColor = Color.FromArgb(140, 180, 220);
+
+            if (!ElevatedSetupHelper.IsTaskRegistered(_config.taskName))
+            {
+                if (!ElevatedOperationHelper.PromptForAdminApproval(_form, _config.appName))
                 {
-                    MessageBox.Show(_form, error, _config.appName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    ReportOperationResult(
+                        false,
+                        "Operation canceled — click Continue on the approval dialog, then select Yes on the UAC prompt.",
+                        action + " Ethernet",
+                        false);
+                    return;
                 }
+            }
+
+            var payload = new Dictionary<string, object>
+            {
+                { "type", action },
+                { "adapter", ethernet.Name }
+            };
+
+            var taskName = _config.taskName;
+            var repoRoot = _repoRoot;
+
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                string errorDetail;
+                bool uacDeclined;
+                var success = ExecuteQueuedAdapterOperation(taskName, repoRoot, payload, out errorDetail, out uacDeclined);
+                _form.BeginInvoke(new Action(() =>
+                {
+                    if (success)
+                    {
+                        RefreshAdapters();
+                    }
+
+                    if (uacDeclined)
+                    {
+                        ElevatedOperationHelper.ShowUacDeclinedDialog(_form, _config.appName);
+                    }
+
+                    ReportOperationResult(success, success ? successText : errorDetail, action + " Ethernet", uacDeclined);
+                }));
+            });
+        }
+
+        private bool ExecuteQueuedAdapterOperation(string taskName, string repoRoot, object payload, out string errorDetail, out bool uacDeclined)
+        {
+            errorDetail = null;
+            uacDeclined = false;
+
+            if (!AdapterOperationQueue.TryEnqueue(taskName, payload, out errorDetail))
+            {
                 return false;
             }
 
-            AdapterOperationQueue.MarkManualOperation();
+            if (!AdapterOperationQueue.DispatchExecution(taskName, repoRoot, out errorDetail))
+            {
+                AdapterOperationQueue.ResetInFlightState();
+                uacDeclined = errorDetail != null && errorDetail.IndexOf("declined", StringComparison.OrdinalIgnoreCase) >= 0;
+                return false;
+            }
+
+            _setupComplete = ElevatedSetupHelper.IsTaskRegistered(taskName);
+            AdapterOperationQueue.WaitForCompletionBlocking(45);
+            AppLogger.Info("EthernetToggle", payload.ToString(), true, "Completed adapter operation");
             return true;
         }
 
@@ -1117,91 +1258,6 @@ namespace EthernetToggle
             }
 
             return adapter.ConnectionState == "Connecting" ? "Connecting" : "Disconnected";
-        }
-
-        private void RunAdapterAction(string action, string adapterName, string source)
-        {
-            try
-            {
-                AdapterNameValidator.ValidateOrThrow(adapterName);
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Error("AdapterActionValidation", adapterName, ex.Message);
-                MessageBox.Show(_form, "Invalid adapter name.", _config.appName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!TryQueueOperation(new Dictionary<string, object>
-            {
-                { "type", action },
-                { "adapter", adapterName }
-            }))
-            {
-                return;
-            }
-
-            AppLogger.Info(action, adapterName, true, "Queued adapter action");
-            Thread.Sleep(1200);
-            RefreshAdapters();
-        }
-
-        private void SwitchToEthernet(string source)
-        {
-            if (_resolvedAdapters.EthernetName == null)
-            {
-                MessageBox.Show(_form, "No Ethernet adapter detected on this PC.", _config.appName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!TryQueueOperation(new Dictionary<string, object>
-            {
-                { "type", "UseEthernet" },
-                { "ethernetAdapter", _resolvedAdapters.EthernetName },
-                { "wifiAdapter", _resolvedAdapters.WiFiName },
-                { "alsoDisableOther", _userSettings.alsoDisableOtherAdapter },
-                { "message", "Ethernet prioritized." }
-            }))
-            {
-                return;
-            }
-
-            Thread.Sleep(1200);
-            RefreshAdapters();
-        }
-
-        private void SwitchToWifi(string source)
-        {
-            if (_resolvedAdapters.WiFiName == null)
-            {
-                MessageBox.Show(_form, "No Wi-Fi adapter detected on this PC.", _config.appName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!TryQueueOperation(new Dictionary<string, object>
-            {
-                { "type", "UseWifi" },
-                { "wifiAdapter", _resolvedAdapters.WiFiName },
-                { "ethernetAdapter", _resolvedAdapters.EthernetName },
-                { "alsoDisableOther", false },
-                { "message", "Wi-Fi prioritized." }
-            }))
-            {
-                return;
-            }
-
-            Thread.Sleep(1200);
-            RefreshAdapters();
-        }
-
-        private void SwitchToEthernet()
-        {
-            SwitchToEthernet("UI");
-        }
-
-        private void SwitchToWifi()
-        {
-            SwitchToWifi("UI");
         }
 
         private void ShowMainWindow()
@@ -1310,12 +1366,6 @@ namespace EthernetToggle
 
         private void Shutdown()
         {
-            if (_wifiHotkey != null)
-            {
-                _wifiHotkey.Dispose();
-                _wifiHotkey = null;
-            }
-
             _timer.Stop();
             _timer.Dispose();
             _notifyIcon.Visible = false;

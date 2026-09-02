@@ -9,13 +9,13 @@
   <Identity
     Name="ITDoctor360.InternetSwitcher"
     Publisher="CN=A6C6CB6A-0869-4AEA-B7A2-1C3DE44E3CCD"
-    Version="1.0.0.0"
+    Version="2.2.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>Link Priority</DisplayName>
     <PublisherDisplayName>IT Doctor 360</PublisherDisplayName>
-    <Description>Control which network connection Windows uses by enabling or disabling your Ethernet adapter. Wi-Fi stays on; Windows routes traffic accordingly.</Description>
+    <Description>One-click Ethernet enable/disable for Windows. Wi-Fi stays available unless you enable the advanced setting.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -34,7 +34,7 @@
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Link Priority"
-        Description="Ethernet adapter priority control for Windows. Wi-Fi stays enabled."
+        Description="One-click Ethernet toggle with live status. Wi-Fi is not disabled by default."
         BackgroundColor="#1E1E1E"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png" />

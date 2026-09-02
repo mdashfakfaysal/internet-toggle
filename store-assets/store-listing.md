@@ -8,46 +8,46 @@ Store identity (unchanged): `ITDoctor360.InternetSwitcher`
 
 ## Short description
 
-Control which connection Windows uses. Toggle your Ethernet adapter on or off; Wi-Fi stays enabled.
+One-click Ethernet control for Windows. Enable or disable your wired adapter; Wi-Fi stays enabled unless you opt in to disable it.
 
 ## Long description
 
-**Link Priority** lets you choose whether Windows routes traffic over Wi-Fi or Ethernet — without pretending to turn Wi-Fi off.
+**Link Priority** gives you one obvious button to enable or disable your Ethernet adapter on Windows.
 
-**How it works (default behavior):**
+**What the button does:**
 
-- **Prioritize Wi-Fi** — enables your Wi-Fi adapter and disables Ethernet so wireless takes over.
-- **Prioritize Ethernet** — enables Ethernet and disconnects active Wi-Fi sessions (`netsh wlan disconnect`). Your Wi-Fi adapter remains enabled; Windows prefers the wired connection when it is up.
+- **Disable Ethernet** — turns off your wired network adapter so traffic uses Wi-Fi (or other connections).
+- **Enable Ethernet** — turns the wired adapter back on.
 
-This is honest Ethernet-adapter priority control, not a Wi-Fi kill switch. An optional advanced setting can also disable the Wi-Fi adapter when prioritizing Ethernet (off by default).
+**About Wi-Fi (accurate):**
+
+- The primary button only enables or disables **Ethernet**.
+- Wi-Fi is **not** disabled by default.
+- An optional advanced setting can also disable the Wi-Fi adapter when you want stricter wired-only behavior (off by default; not recommended for fragile WLAN hardware).
 
 **Features:**
 
-- One-click Prioritize Wi-Fi / Prioritize Ethernet
-- Per-adapter enable/disable list with live status
-- System tray quick actions
-- Auto-detects adapters (Realtek, MediaTek, USB Ethernet, etc.)
-- Safe rollback if a change fails
+- One large Enable/Disable Ethernet button — impossible to miss
+- Live adapter status and last-operation result line
+- System tray toggle with the same action
+- Auto-detects adapters including USB Ethernet (Realtek, ASIX, etc.)
+- Safe retry and clear messages if Windows admin approval is needed or declined
 - No telemetry, no ads
 
-**Setup:** One-time administrator approval registers a scheduled task for adapter changes. After that, no repeated prompts.
+**Setup:** Windows may ask for administrator approval (UAC) the first time you change an adapter. After optional one-time task registration, later changes may not prompt again.
 
 **Publisher:** IT Doctor 360
 
 ## Keywords
 
-ethernet, wifi, network, adapter, priority, route, switch, tray, wired, wireless
+ethernet, wifi, network, adapter, toggle, disable, enable, tray, wired, usb ethernet
 
 ## Privacy
 
-Settings stored locally only. No browsing history, passwords, or traffic collection. See in-app privacy policy URL.
-
-## Age rating
-
-Everyone / General audience — system utility, no restricted content.
+Settings stored locally only. No browsing history, passwords, or traffic collection.
 
 ## Screenshot captions
 
-1. Main window — Prioritize Wi-Fi / Prioritize Ethernet buttons and adapter status
-2. Tray menu — quick priority actions
-3. Settings — startup options and advanced Wi-Fi disable (off by default)
+1. Main window — single Enable/Disable Ethernet button with live status
+2. Tray menu — Disable/Enable Ethernet, Show Window, Exit
+3. Settings — advanced optional Wi-Fi disable (off by default)

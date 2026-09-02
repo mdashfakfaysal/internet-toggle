@@ -1,81 +1,92 @@
-# Microsoft Store Certification Fixes — v1.0.1
+# Microsoft Store Certification Fixes — v2.2.0
 
-**Policy failures addressed:** 10.1.2.10 (Functionality), 10.1.1.1 (150% DPI scaling)
+**Policy failure addressed:** 10.1.2.10 (Functionality — feature not responding)
 
 ---
 
-## 10.1.2.10 — Switch / Enable / Disable not responding
+## Root causes (v2.1.0 and earlier)
 
-### Root cause
+| # | Hypothesis | Finding | Code path |
+|---|------------|---------|-----------|
+| 1 | UAC / scheduled-task setup blocks reviewers | **Confirmed.** `TryEnqueue` wrote the queue then called `schtasks /Run` on a task that did not exist on a clean Store install. The queue was never processed — no lock, no error, no UI change after the first dialog. | `AdapterOperationQueue.TriggerScheduledTask` + mandatory `EnsureElevatedSetup` before enqueue |
+| 2 | USB Ethernet not detected | **Not the primary issue.** `AdapterDiscovery.IsEthernet` matches `asix`, `usb`, `ethernet` — ASIX "Ethernet 2" is classified correctly when present. | `AdapterDiscovery.cs` lines 148–166 |
+| 3 | No immediate UI feedback | **Confirmed.** `Thread.Sleep(1200)` on the UI thread after queueing; dual "Prioritize" buttons confused testers looking for a simple Ethernet toggle. | `SwitchToEthernet` / `SwitchToWifi` |
+| 4 | Silent failure paths | **Confirmed.** Queue without task = silent no-op; `TryQueueOperation` returned false after setup dialog with no in-window status line. | `TryQueueOperation` → `EnsureElevatedSetup` → failed `schtasks /Run` |
 
-1. **Hardcoded adapter names** (`Ethernet`, `Wi-Fi`) in `config.json` — cert machine had `Ethernet 2` (ASIX USB). Summary showed `n/a` while list showed the real adapter; switch commands targeted non-existent names.
-2. **No scheduled task on Store install** — cert testers do not run `Install-EthernetToggle.ps1` as admin; elevated task never registered → all operations no-op.
-3. **Race on `pending-action.json`** — rapid tray clicks overwrote IPC payload; concurrent `schtasks /Run` caused lost/wrong commands.
-4. **Visible PowerShell** — scheduled task missing `-WindowStyle Hidden -NonInteractive`.
-5. **No retry/verify** — single `Enable-NetAdapter` call with no state confirmation.
+---
 
-### Fixes (v1.0.1)
+## Fixes in v2.2.0
 
 | Fix | Implementation |
 |-----|----------------|
-| Dynamic adapter discovery | `AdapterDiscovery.cs` — classifies Wi-Fi/Ethernet by interface description; hints from config are fallback only |
-| Summary matches reality | Shows `Ethernet (Ethernet 2): Connected` not `Ethernet: n/a` |
-| One-time in-app setup | `ElevatedSetupHelper` + `Register-ElevatedTask.ps1` — UAC prompt on first switch |
-| Operation queue | `AdapterOperationQueue.cs` + `pending-action-queue.json` |
-| Retry + verify | `Set-AdapterStateReliable` in PowerShell with 15s poll timeout |
-| Hidden PowerShell | Task args: `-WindowStyle Hidden -NonInteractive` |
-| Failure toasts | Partial switch reports which adapter failed |
-
-### Certification tester instructions (paste in Partner Center)
-
-```
-FIRST RUN — ONE-TIME SETUP
-1. Install from Store package
-2. Launch Internet Switcher
-3. Click "Switch to Wi-Fi" or "Switch to Ethernet"
-4. Approve the UAC prompt ("One-Time Setup Required") — registers elevated scheduled task
-5. After setup, all switch/enable/disable buttons work without further UAC prompts
-
-TEST STEPS
-1. Open main window — adapter list shows all physical adapters (may be named "Ethernet 2", not "Ethernet")
-2. Summary line shows detected adapter names and status (not n/a when adapter present)
-3. Click Switch to Wi-Fi — Wi-Fi enables, Ethernet disables
-4. Click Switch to Ethernet — reverse
-5. Click Enable/Disable on individual adapter rows
-6. Repeat steps 3–5 several times rapidly — operations should remain reliable
-
-NOTE: App auto-detects Wi-Fi and Ethernet adapters; config names are hints only.
-```
+| One obvious control | Single primary button: **Disable Ethernet** / **Enable Ethernet**; tray menu matches |
+| Immediate feedback | Button disables + "Disabling Ethernet…" within one UI frame; last-result label always updates |
+| Off UI thread | Enqueue, elevation, and wait run on `ThreadPool`; no `Thread.Sleep` on UI thread |
+| Per-click elevation | `ElevatedOperationHelper` — if scheduled task missing, one-shot elevated PowerShell runs `Register-ElevatedTask.ps1` (best effort) + `Toggle-NetworkAdapter.ps1` |
+| UAC declined | Explicit dialog — adapter not changed; instructions to retry |
+| No Ethernet | Button disabled: "No Ethernet adapter detected" |
+| Accurate copy | Store/README text no longer claims Wi-Fi is never touched |
 
 ---
 
-## 10.1.1.1 — 150% DPI scaling (1920×1080)
+## Certification tester instructions (paste in Partner Center)
 
-### Root cause
+```
+TEST ENVIRONMENT
+• Device: Windows 11, build 26200 or later
+• If the laptop has NO built-in Ethernet port, connect a USB Ethernet adapter before testing (for example ASIX AX88772B — may appear as "Ethernet 2").
+• Use a clean user profile or reset the app between runs if needed.
 
-Header button column too narrow (228px) for About / Settings / Profiles at 150% scaling; title font too large.
+INSTALL
+1. Install Link Priority from the Store package (MSIX).
+2. Launch Link Priority from Start.
 
-### Fixes
+PRIMARY TEST — ONE BUTTON
+1. Open the main window (double-click tray icon if minimized).
+2. Confirm the status line shows your Ethernet adapter name and state (for example "Ethernet 2: Connected").
+3. Click the large blue button:
+   • If Ethernet is enabled, it reads "Disable Ethernet".
+   • If Ethernet is disabled, it reads "Enable Ethernet".
+4. On first use, click Continue on the in-app dialog, then select YES on the Windows User Account Control (UAC) prompt.
+   Windows requires administrator approval to change a network adapter — this is normal.
+5. Within a few seconds:
+   • The button label updates to the opposite state.
+   • The status line shows Disabled or Enabled/Connected.
+   • A "last result" line shows OK with a timestamp.
+   • A notification balloon may appear.
+6. Click the button again to toggle back. Repeat 3–5 times — the app must never freeze, hang, or stop responding.
 
-- Form width increased to **680×580** client pixels
-- Header action column **290px**
-- Title font **13pt** (was 14pt)
-- `AutoScaleMode.Dpi` retained
-- Button margin/spacing adjusted
+TRAY MENU
+1. Right-click the tray icon.
+2. Use "Disable Ethernet" or "Enable Ethernet" — same behavior as the main button.
+3. "Show Window" opens the main window; "Exit" closes the app.
+
+IF UAC IS DECLINED
+• The app shows a clear message that the adapter was NOT changed.
+• Click the button again and approve UAC to retry.
+
+IF NO ETHERNET ADAPTER
+• The primary button is gray and reads "No Ethernet adapter detected".
+• Connect a USB Ethernet adapter and reopen the app.
+
+NOTE
+• This app enables/disables the Ethernet adapter only via the primary button.
+• Wi-Fi is not disabled by default. Advanced settings may optionally disable Wi-Fi when prioritizing Ethernet (off by default).
+```
 
 ---
 
 ## Package version
 
-- **MSIX identity version:** 1.0.1.0
+- **App version:** 2.2.0
+- **MSIX identity version:** 2.2.0.0
 - **Partner Center identity:** unchanged (`ITDoctor360.InternetSwitcher`)
 
 ---
 
 ## Resubmission checklist
 
-- [ ] Upload new MSIX `InternetSwitcher-Free-Store-x64-1-0-1-0.msix`
-- [ ] Update "What's new" with cert fix notes
-- [ ] Paste certification tester instructions (above) in Submission options
-- [ ] Confirm privacy URL still valid
-- [ ] Test on clean VM without pre-install script
+- [ ] Upload new MSIX `InternetSwitcher-Free-Store-x64-2-2-0-0.msix`
+- [ ] Paste certification tester instructions above in Submission options
+- [ ] Update "What's new" with v2.2.0 cert fix notes
+- [ ] Test on clean VM: install → open → click button → approve UAC → observe toggle

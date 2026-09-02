@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0 — 2026-09-03
+
+**Store cert fix (10.1.2.10):** Single Enable/Disable Ethernet button; immediate UI feedback; per-click elevation fallback when scheduled task is missing (no silent no-op); USB Ethernet detection unchanged. Accurate Wi-Fi copy. New artwork regen.
+
+## 2.1.1 — 2026-09-03
+
+**Artwork fix:** Regenerated Link Priority logo/icon with lock-safe asset scripts; MSIX ships new artwork. Copy audit: clarified that Prioritize Wi-Fi enables Wi-Fi and Prioritize Ethernet runs `netsh wlan disconnect` (Wi-Fi adapter not disabled by default).
+
 ## 2.1.0 — 2026-09-03
 
 **Rebrand:** Outward-facing identity renamed to **Link Priority** with honest copy describing Ethernet-adapter priority control (Wi-Fi adapter stays on by default). New icon/logo. No functional or adapter-control logic changes. Store identity `ITDoctor360.InternetSwitcher` unchanged.

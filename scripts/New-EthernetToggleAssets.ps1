@@ -15,68 +15,112 @@ if (-not (Test-Path -LiteralPath $assetsDir)) {
     New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
 }
 
+function Move-ReplaceFile {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [int]$MaxAttempts = 8
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            if (Test-Path -LiteralPath $DestinationPath) {
+                Remove-Item -LiteralPath $DestinationPath -Force -ErrorAction Stop
+            }
+            Move-Item -LiteralPath $SourcePath -Destination $DestinationPath -Force -ErrorAction Stop
+            return
+        }
+        catch {
+            if ($attempt -eq $MaxAttempts) {
+                throw
+            }
+            Start-Sleep -Milliseconds (200 * $attempt)
+        }
+    }
+}
+
 function New-LinkPriorityBitmap {
     param([int]$Size)
 
-    $bitmap = New-Object System.Drawing.Bitmap $Size, $Size
-    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $graphics.Clear([System.Drawing.Color]::FromArgb(255, 30, 30, 30))
+    $bitmap = $null
+    $graphics = $null
+    $wifiPen = $null
+    $wifiDot = $null
+    $portDark = $null
+    $portAccent = $null
+    $pinBrush = $null
+    $arrowPen = $null
+    $routeBrush = $null
 
-    $scale = $Size / 256.0
-    $graphics.ScaleTransform($scale, $scale)
+    try {
+        $bitmap = New-Object System.Drawing.Bitmap $Size, $Size
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+        $graphics.Clear([System.Drawing.Color]::FromArgb(255, 30, 30, 30))
 
-    $wifiPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 70, 160, 67)), 8
-    $wifiPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $wifiPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $graphics.DrawArc($wifiPen, 72, 64, 112, 112, 200, 140)
-    $graphics.DrawArc($wifiPen, 88, 80, 80, 80, 200, 140)
-    $graphics.DrawArc($wifiPen, 104, 96, 48, 48, 200, 140)
-    $wifiPen.Dispose()
+        $scale = $Size / 256.0
+        $graphics.ScaleTransform($scale, $scale)
 
-    $wifiDot = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 70, 160, 67))
-    $graphics.FillEllipse($wifiDot, 120, 168, 16, 16)
-    $wifiDot.Dispose()
+        $wifiPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 70, 160, 67)), 8
+        $wifiPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $wifiPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $graphics.DrawArc($wifiPen, 72, 64, 112, 112, 200, 140)
+        $graphics.DrawArc($wifiPen, 88, 80, 80, 80, 200, 140)
+        $graphics.DrawArc($wifiPen, 104, 96, 48, 48, 200, 140)
 
-    $portDark = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 45, 45, 45))
-    $portAccent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 70, 130, 220))
-    $pinBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 180, 180, 180))
-    $graphics.FillRectangle($portDark, 40, 168, 80, 56)
-    $graphics.FillRectangle($portAccent, 48, 176, 64, 40)
-    for ($i = 0; $i -lt 5; $i++) {
-        $graphics.FillRectangle($pinBrush, 54 + ($i * 12), 184, 6, 18)
+        $wifiDot = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 70, 160, 67))
+        $graphics.FillEllipse($wifiDot, 120, 168, 16, 16)
+
+        $portDark = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 45, 45, 45))
+        $portAccent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 70, 130, 220))
+        $pinBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 180, 180, 180))
+        $graphics.FillRectangle($portDark, 40, 168, 80, 56)
+        $graphics.FillRectangle($portAccent, 48, 176, 64, 40)
+        for ($i = 0; $i -lt 5; $i++) {
+            $graphics.FillRectangle($pinBrush, 54 + ($i * 12), 184, 6, 18)
+        }
+
+        $arrowPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 240, 192, 64)), 8
+        $arrowPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $arrowPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $graphics.DrawLine($arrowPen, 168, 88, 210, 88)
+        $graphics.DrawLine($arrowPen, 200, 78, 210, 88)
+        $graphics.DrawLine($arrowPen, 200, 98, 210, 88)
+
+        $routeBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 240, 192, 64))
+        $graphics.FillEllipse($routeBrush, 136, 74, 28, 28)
+
+        $clone = [System.Drawing.Bitmap]$bitmap.Clone()
+        return $clone
     }
-    $portDark.Dispose()
-    $portAccent.Dispose()
-    $pinBrush.Dispose()
-
-    $arrowPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 240, 192, 64)), 8
-    $arrowPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $arrowPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $graphics.DrawLine($arrowPen, 168, 88, 210, 88)
-    $graphics.DrawLine($arrowPen, 200, 78, 210, 88)
-    $graphics.DrawLine($arrowPen, 200, 98, 210, 88)
-    $arrowPen.Dispose()
-
-    $routeBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 240, 192, 64))
-    $graphics.FillEllipse($routeBrush, 136, 74, 28, 28)
-    $routeBrush.Dispose()
-
-    $graphics.Dispose()
-    return $bitmap
+    finally {
+        if ($routeBrush) { $routeBrush.Dispose() }
+        if ($arrowPen) { $arrowPen.Dispose() }
+        if ($pinBrush) { $pinBrush.Dispose() }
+        if ($portAccent) { $portAccent.Dispose() }
+        if ($portDark) { $portDark.Dispose() }
+        if ($wifiDot) { $wifiDot.Dispose() }
+        if ($wifiPen) { $wifiPen.Dispose() }
+        if ($graphics) { $graphics.Dispose() }
+        if ($bitmap) { $bitmap.Dispose() }
+    }
 }
 
 function Get-IconDibBytes {
     param([System.Drawing.Bitmap]$Bitmap)
 
-    $memoryStream = New-Object System.IO.MemoryStream
-    $Bitmap.Save($memoryStream, [System.Drawing.Imaging.ImageFormat]::Bmp)
-    $bmpBytes = $memoryStream.ToArray()
-    $memoryStream.Dispose()
-
-    $dibBytes = New-Object byte[] ($bmpBytes.Length - 14)
-    [Array]::Copy($bmpBytes, 14, $dibBytes, 0, $dibBytes.Length)
-    return $dibBytes
+    $memoryStream = $null
+    try {
+        $memoryStream = New-Object System.IO.MemoryStream
+        $Bitmap.Save($memoryStream, [System.Drawing.Imaging.ImageFormat]::Bmp)
+        $bmpBytes = $memoryStream.ToArray()
+        $dibBytes = New-Object byte[] ($bmpBytes.Length - 14)
+        [Array]::Copy($bmpBytes, 14, $dibBytes, 0, $dibBytes.Length)
+        return $dibBytes
+    }
+    finally {
+        if ($memoryStream) { $memoryStream.Dispose() }
+    }
 }
 
 function Save-IconFromBitmap {
@@ -86,62 +130,111 @@ function Save-IconFromBitmap {
         [int[]]$Sizes
     )
 
-    $memoryStream = New-Object System.IO.MemoryStream
-    $writer = New-Object System.IO.BinaryWriter($memoryStream)
+    $memoryStream = $null
+    $writer = $null
+    $resizedList = New-Object System.Collections.Generic.List[System.Drawing.Bitmap]
 
-    $writer.Write([UInt16]0)
-    $writer.Write([UInt16]1)
-    $writer.Write([UInt16]$Sizes.Count)
+    try {
+        $memoryStream = New-Object System.IO.MemoryStream
+        $writer = New-Object System.IO.BinaryWriter($memoryStream)
 
-    $imageData = New-Object System.Collections.Generic.List[byte[]]
-
-    foreach ($size in $Sizes) {
-        $resized = New-Object System.Drawing.Bitmap $size, $size
-        $resGraphics = [System.Drawing.Graphics]::FromImage($resized)
-        $resGraphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-        $resGraphics.DrawImage($SourceBitmap, 0, 0, $size, $size)
-        $resGraphics.Dispose()
-
-        $dibBytes = Get-IconDibBytes -Bitmap $resized
-        $resized.Dispose()
-        $imageData.Add($dibBytes) | Out-Null
-
-        $writer.Write([Byte]($size -band 0xFF))
-        $writer.Write([Byte](($size -shr 8) -band 0xFF))
-        $writer.Write([Byte]0)
-        $writer.Write([Byte]0)
+        $writer.Write([UInt16]0)
         $writer.Write([UInt16]1)
-        $writer.Write([UInt16]32)
-        $writer.Write([UInt32]$dibBytes.Length)
-        $writer.Write([UInt32]0)
-    }
+        $writer.Write([UInt16]$Sizes.Count)
 
-    $offset = 6 + (16 * $Sizes.Count)
-    for ($index = 0; $index -lt $Sizes.Count; $index++) {
-        $memoryStream.Position = 6 + (16 * $index) + 12
-        $writer.Write([UInt32]$offset)
-        $offset += $imageData[$index].Length
-    }
+        $imageData = New-Object System.Collections.Generic.List[byte[]]
 
-    foreach ($bytes in $imageData) {
-        $writer.Write($bytes)
-    }
+        foreach ($size in $Sizes) {
+            $resized = New-Object System.Drawing.Bitmap $size, $size
+            $resGraphics = $null
+            try {
+                $resGraphics = [System.Drawing.Graphics]::FromImage($resized)
+                $resGraphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                $resGraphics.DrawImage($SourceBitmap, 0, 0, $size, $size)
+            }
+            finally {
+                if ($resGraphics) { $resGraphics.Dispose() }
+            }
 
-    [System.IO.File]::WriteAllBytes($DestinationPath, $memoryStream.ToArray())
-    $writer.Dispose()
-    $memoryStream.Dispose()
+            $resizedList.Add($resized) | Out-Null
+            $imageData.Add((Get-IconDibBytes -Bitmap $resized)) | Out-Null
+
+            $writer.Write([Byte]($size -band 0xFF))
+            $writer.Write([Byte](($size -shr 8) -band 0xFF))
+            $writer.Write([Byte]0)
+            $writer.Write([Byte]0)
+            $writer.Write([UInt16]1)
+            $writer.Write([UInt16]32)
+            $writer.Write([UInt32]$imageData[$imageData.Count - 1].Length)
+            $writer.Write([UInt32]0)
+        }
+
+        $offset = 6 + (16 * $Sizes.Count)
+        for ($index = 0; $index -lt $Sizes.Count; $index++) {
+            $memoryStream.Position = 6 + (16 * $index) + 12
+            $writer.Write([UInt32]$offset)
+            $offset += $imageData[$index].Length
+        }
+
+        foreach ($bytes in $imageData) {
+            $writer.Write($bytes)
+        }
+
+        [System.IO.File]::WriteAllBytes($DestinationPath, $memoryStream.ToArray())
+    }
+    finally {
+        foreach ($resized in $resizedList) {
+            if ($resized) { $resized.Dispose() }
+        }
+        if ($writer) { $writer.Dispose() }
+        if ($memoryStream) { $memoryStream.Dispose() }
+    }
 }
 
-$tempLogo = Join-Path $assetsDir 'logo.build.tmp.png'
-$tempIcon = Join-Path $assetsDir 'icon.build.tmp.ico'
-$logoBitmap = New-LinkPriorityBitmap -Size 256
-$logoBitmap.Save($tempLogo, [System.Drawing.Imaging.ImageFormat]::Png)
-if (Test-Path $logoPath) { Remove-Item $logoPath -Force }
-Move-Item $tempLogo $logoPath -Force
-Save-IconFromBitmap -SourceBitmap $logoBitmap -DestinationPath $tempIcon -Sizes @(16, 32, 48, 256)
-if (Test-Path $iconPath) { Remove-Item $iconPath -Force }
-Move-Item $tempIcon $iconPath -Force
-$logoBitmap.Dispose()
+$beforeLogoHash = if (Test-Path $logoPath) { (Get-FileHash $logoPath -Algorithm SHA256).Hash } else { $null }
+$beforeIconHash = if (Test-Path $iconPath) { (Get-FileHash $iconPath -Algorithm SHA256).Hash } else { $null }
+
+$tempLogo = Join-Path ([System.IO.Path]::GetTempPath()) ("linkpriority-logo-{0}.png" -f [Guid]::NewGuid().ToString('N'))
+$tempIcon = Join-Path ([System.IO.Path]::GetTempPath()) ("linkpriority-icon-{0}.ico" -f [Guid]::NewGuid().ToString('N'))
+
+$logoBitmap = $null
+try {
+    $logoBitmap = New-LinkPriorityBitmap -Size 256
+    $logoBitmap.Save($tempLogo, [System.Drawing.Imaging.ImageFormat]::Png)
+    Save-IconFromBitmap -SourceBitmap $logoBitmap -DestinationPath $tempIcon -Sizes @(16, 32, 48, 256)
+}
+finally {
+    if ($logoBitmap) { $logoBitmap.Dispose() }
+}
+
+Move-ReplaceFile -SourcePath $tempLogo -DestinationPath $logoPath
+Move-ReplaceFile -SourcePath $tempIcon -DestinationPath $iconPath
+
+$afterLogoHash = (Get-FileHash $logoPath -Algorithm SHA256).Hash
+$afterIconHash = (Get-FileHash $iconPath -Algorithm SHA256).Hash
 
 Write-Host "Created $logoPath"
 Write-Host "Created $iconPath"
+Write-Host "logo.png SHA256 before: $beforeLogoHash"
+Write-Host "logo.png SHA256 after:  $afterLogoHash"
+Write-Host "icon.ico SHA256 before: $beforeIconHash"
+Write-Host "icon.ico SHA256 after:  $afterIconHash"
+
+if ($beforeLogoHash -and ($beforeLogoHash -eq $afterLogoHash)) {
+    Write-Warning 'logo.png hash unchanged — verify artwork updated.'
+}
+
+$iconBytes = [System.IO.File]::ReadAllBytes($iconPath)
+$pngMagic = [byte[]]@(0x89, 0x50, 0x4E, 0x47)
+$containsPng = $false
+for ($i = 0; $i -lt ($iconBytes.Length - 4); $i++) {
+    if ($iconBytes[$i] -eq $pngMagic[0] -and $iconBytes[$i + 1] -eq $pngMagic[1] -and $iconBytes[$i + 2] -eq $pngMagic[2] -and $iconBytes[$i + 3] -eq $pngMagic[3]) {
+        $containsPng = $true
+        break
+    }
+}
+if ($containsPng) {
+    throw 'icon.ico appears to contain PNG-compressed frames — expected BMP-based ICO only.'
+}
+
+Write-Host 'icon.ico verified BMP-based (no embedded PNG frames).'
